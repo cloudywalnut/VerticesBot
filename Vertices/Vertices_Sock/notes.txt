@@ -1,0 +1,2 @@
+﻿VerticesVoiceNotes1 not being used so not updated
+Changes in VerticesMedia1.js, Vertices_Sock.js, VerticesPdf01.js

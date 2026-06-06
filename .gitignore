@@ -1,0 +1,56 @@
+# dependencies
+**/node_modules
+**/.pnp
+**/pnp.*
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+
+# testing
+**/coverage
+
+# next.js
+**/.next/
+**/out/
+
+# production
+**/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+**/.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+**/next-env.d.ts
+
+# WhatsApp session credentials - never commit these
+userdata/whatsapp/
+
+# Generated QR code
+userdata/qr/
+
+# Runtime data - auto-created on startup
+userdata/chathistory/
+userdata/mem/
+userdata/img/
+
+# Runtime JSON state - auto-created on startup
+userdata/json/bot.log
+userdata/json/bot-pid.json
+userdata/json/pausedUsers.json
+userdata/json/notifyboss-*.json

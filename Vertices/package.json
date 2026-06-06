@@ -1,0 +1,26 @@
+{
+  "name": "verticesbot",
+  "version": "16.0.0",
+  "description": "Vertices WhatsApp AI Business Bot - Enterprise Edition (Baileys)",
+  "main": "Vertices.js",
+  "scripts": {
+    "start": "node Vertices.js",
+    "start:pm2": "pm2 start Vertices.js --name Vertices"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "axios": "^1.8.3",
+    "axios-retry": "^4.5.0",
+    "bytenode": "^1.5.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "form-data": "^4.0.1",
+    "mime-types": "^2.1.35",
+    "pino": "^9.6.0",
+    "pm2": "^6.0.10",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "vm2": "^3.9.19"
+  }
+}
