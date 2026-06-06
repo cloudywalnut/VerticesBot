@@ -2,8 +2,8 @@
 const fs   = require('fs');
 const path = require('path');
 
-const PERM_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'Verticesmemory-perm.txt');
-const TEMP_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'Verticesmemory-temp.txt');
+const PERM_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'verticesmemory-perm.txt');
+const TEMP_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'verticesmemory-temp.txt');
 
 // === FILE UTILITIES ===
 function readFile(file) {

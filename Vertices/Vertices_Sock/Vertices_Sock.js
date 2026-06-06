@@ -186,11 +186,11 @@ async function reloadEnv(sock) {
         global.SLEEP_MINS = parseInt(parsed.SLEEP_MINS) || 59;
 
         // File paths
-        global.PERSONA_FILE_LONG = path.join(__dirname, '..', '..', 'userdata/persona/Verticespersona-long.txt'); 
-        global.PERSONA_FILE_SHORT = path.join(__dirname, '..', '..', 'userdata/persona/Verticespersona-short.txt'); 
-        global.PERSONA_FILE_GROUP = path.join(__dirname, '..', '..', 'userdata/persona/Verticespersona-group.txt'); 
-        global.PERSONA_FILE_BOSS = path.join(__dirname, '..', '..', 'userdata/persona/Verticespersona-boss.txt'); 
-        global.PERSONA_FILE_CODER = path.join(__dirname, '..', '..', 'userdata/persona/Verticespersona-coder-c.txt'); 
+        global.PERSONA_FILE_LONG = path.join(__dirname, '..', '..', 'userdata/persona/verticespersona-long.txt');
+        global.PERSONA_FILE_SHORT = path.join(__dirname, '..', '..', 'userdata/persona/verticespersona-short.txt');
+        global.PERSONA_FILE_GROUP = path.join(__dirname, '..', '..', 'userdata/persona/verticespersona-group.txt');
+        global.PERSONA_FILE_BOSS = path.join(__dirname, '..', '..', 'userdata/persona/verticespersona-boss.txt');
+        global.PERSONA_FILE_CODER = path.join(__dirname, '..', '..', 'userdata/persona/verticespersona-coder-c.txt');
 
         global.SALES_NOTIFICATION_FILE = path.join(__dirname, '..', '..', 'userdata/json/notifyboss-sales.json');
         global.ABUSE_NOTIFICATION_FILE = path.join(__dirname, '..', '..', 'userdata/json/notifyboss-abuse.json');
@@ -272,8 +272,8 @@ function loadPersona() {
 }
 
 function getMemoryPersona() {
-    const permFile = path.join(__dirname, '..', '..', `userdata/mem/Verticesmemory-perm.txt`);
-    const tempFile = path.join(__dirname, '..', '..', `userdata/mem/Verticesmemory-temp.txt`);
+    const permFile = path.join(__dirname, '..', '..', 'userdata/mem/verticesmemory-perm.txt');
+    const tempFile = path.join(__dirname, '..', '..', 'userdata/mem/verticesmemory-temp.txt');
 
     if (!fs.existsSync(permFile)) fs.writeFileSync(permFile, '', 'utf-8');
     if (!fs.existsSync(tempFile)) fs.writeFileSync(tempFile, '', 'utf-8');
