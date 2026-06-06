@@ -58,3 +58,6 @@ userdata/json/wa-status.json
 
 # Allow env example - override the **/.env* rule above
 !userdata/.env.example
+
+# Notes File Not Needed on Github
+notes.txt
