@@ -118,7 +118,7 @@ export function ChatsView({ addToast, isMobile }: { addToast: AddToast; isMobile
                 transition: 'background 0.12s',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>+{f.phone}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{f.phone}</div>
                   <button
                     onClick={e => { e.stopPropagation(); deleteChat(f.name); }}
                     disabled={deleting}

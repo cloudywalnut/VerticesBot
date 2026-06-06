@@ -1,14 +1,14 @@
-﻿// VerticesBoss1.js
-const fs = require('fs');
+// VerticesBoss2.js
+const fs   = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { NodeVM } = require('vm2');
-const HelperVersion = path.basename(__filename).replace(/\.[^/.]+$/, "");
+const MODULE = path.basename(__filename, path.extname(__filename));
 
-// === EXPORTED BOSS FUNCTIONS ===
-function getAllChatsFromFolder(folderPath = path.join(__dirname, '..', '..', 'userdata', 'chathistory')) { 
+// === CHAT DATA ===
+function getAllChatsFromFolder(folderPath = path.join(__dirname, '..', '..', 'userdata', 'chathistory')) {
     if (!fs.existsSync(folderPath)) {
-        console.warn(`getAllChatsFromFolder: Folder ${folderPath} does not exist.`);
+        console.warn(`[${MODULE}] Folder not found: ${folderPath}`);
         return [];
     }
 
@@ -17,60 +17,57 @@ function getAllChatsFromFolder(folderPath = path.join(__dirname, '..', '..', 'us
 
     for (const file of files) {
         const fullPath = path.join(folderPath, file);
-        const stat = fs.statSync(fullPath);
-
-        // ✅ Skip folders and non-json files
-        if (stat.isDirectory() || !file.endsWith('.json')) {
-            continue;
-        }
-
+        if (fs.statSync(fullPath).isDirectory() || !file.endsWith('.json')) continue;
         try {
             const content = fs.readFileSync(fullPath, 'utf8');
-            const json = JSON.parse(content);
-            allChats = allChats.concat(json);
+            allChats = allChats.concat(JSON.parse(content));
         } catch (err) {
-            console.warn(`Failed to read/parse ${file}:`, err.message);
+            console.warn(`[${MODULE}] Failed to read/parse ${file}:`, err.message);
         }
     }
 
     return allChats;
 }
 
+// === AI CODE GENERATION ===
 function extractCodeFromGPTReply(reply) {
     if (!reply || typeof reply !== 'string') return null;
-
-    const codeMatch = reply.match(/```(?:js|javascript)?\s*([\s\S]+?)\s*```/);
-    if (codeMatch) return codeMatch[1].trim();
-    return null;
+    const match = reply.match(/```(?:js|javascript)?\s*([\s\S]+?)\s*```/);
+    return match ? match[1].trim() : null;
 }
 
-async function askAIforCodes(prompt, chosenURL, chosenModel, chosenAPI, VerticesPersonaCoder) {
+async function askAIforCodes(prompt, chosenURL, chosenModel, chosenAPI, personaCoder) {
     try {
         const response = await axios.post(chosenURL, {
             model: chosenModel,
             messages: [
-                { role: "system", content: VerticesPersonaCoder },
-                { role: "user", content: prompt }
+                { role: "system", content: personaCoder },
+                { role: "user",   content: prompt }
             ],
             temperature: 0.4,
-            max_tokens: 2000
+            max_tokens:  2000
         }, {
             headers: {
                 "Authorization": `Bearer ${chosenAPI}`,
-                "Content-Type": "application/json"
+                "Content-Type":  "application/json"
             }
         });
+
+        if (!response.data?.choices?.[0]) {
+            console.error(`[${MODULE}] Invalid AI response format`);
+            return "module.exports = 'Invalid AI response';";
+        }
+
         return response.data.choices[0].message.content;
     } catch (err) {
-        console.error("AI report codes error:", err);
+        console.error(`[${MODULE}] askAIforCodes error:`, err.response?.data || err.message);
         return "module.exports = 'AI generate codes errors for report';";
     }
 }
 
+// === SANDBOXED CODE EXECUTION ===
 function runDynamicCode(rawCode) {
-    // Clean GPT wrapping
     rawCode = rawCode.replace(/^\s*```(?:js|javascript)?\s*|```$/g, '').trim();
-
     const wrapped = `module.exports = (function() {\n${rawCode}\n})();`;
 
     const vm = new NodeVM({
@@ -88,38 +85,35 @@ function runDynamicCode(rawCode) {
         const histDir = path.join(__dirname, '..', '..', 'userdata', 'chathistory');
         if (!fs.existsSync(histDir)) {
             fs.mkdirSync(histDir);
-            console.log(`[${HelperVersion}] Created missing 'chathistory' directory.`);
+            console.log(`[${MODULE}] Created missing 'chathistory' directory.`);
         }
 
         try {
             const result = vm.run(wrapped, 'reportcoder.js');
-            if (result === undefined) return "No result returned from code.";
-            if (typeof result === "string") return result;
+            if (result === undefined)              return "No result returned from code.";
+            if (typeof result === "string")        return result;
             if (typeof result === "number" || typeof result === "boolean") return result.toString();
             return JSON.stringify(result, null, 2);
         } catch (err) {
-            console.error(`${HelperVersion} error inside sandboxed GPT code:`, err.message);
+            console.error(`[${MODULE}] Sandboxed code error:`, err.message);
             return "Error executing code in sandbox.";
         }
     } catch (err) {
-        console.error("Report codes error:", err.message);
+        console.error(`[${MODULE}] runDynamicCode error:`, err.message);
         return "Error executing the report codes.";
     }
 }
 
-// UPDATED: Baileys-compatible boss detection
-function isBossMode(msg, BOSS_PHONE) {
-    // Baileys uses msg.key.remoteJid instead of msg.from
+// === BOSS DETECTION ===
+function isBossMode(msg, bossPhone) {
     const messageFrom = msg.key?.remoteJid;
-    
-    if (messageFrom === BOSS_PHONE) {
-        console.log("Boss detected... switching to Boss Mode!");
+    if (messageFrom === bossPhone) {
+        console.log("[VerticesBoss2] Boss detected — switching to Boss Mode.");
         return true;
     }
     return false;
 }
 
-// Export all boss functions
 module.exports = {
     getAllChatsFromFolder,
     extractCodeFromGPTReply,

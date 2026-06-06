@@ -1,12 +1,27 @@
-﻿// VerticesPause1.js
+// VerticesPause1.js
 const fs = require('fs');
 
+// === DEFAULT DATA STRUCTURE ===
+const DEFAULT_PAUSE_DATA = { paused: [], global: false };
+
 function getPauseData(file) {
-    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+    try {
+        const raw = fs.readFileSync(file, 'utf-8');
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data.paused)) data.paused = [];
+        if (typeof data.global !== 'boolean') data.global = false;
+        return data;
+    } catch {
+        return { ...DEFAULT_PAUSE_DATA };
+    }
 }
 
 function savePauseData(file, data) {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2));
+    try {
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error('[VerticesPause1] Failed to save pause data:', err.message);
+    }
 }
 
 function setGlobalPause(file, value) {

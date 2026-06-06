@@ -1,14 +1,16 @@
-﻿// VerticesHelper.js - JS dispatcher replacing VerticesHelper8 and VerticesMemMgmt1 binaries
+// VerticesHelper.js
 const Chat    = require('./VerticesChat1.js');
 const Pause   = require('./VerticesPause1.js');
 const MemMgmt = require('./VerticesMemMgmt1.js');
 
+// === COMMAND DISPATCHER ===
 function runHelperCommand(command, ...args) {
     switch (command) {
 
-        case 'loadPersona':
+        case 'loadPersona': {
             const persona = Chat.loadPersona(...args);
             return persona ? JSON.stringify(persona) : '';
+        }
 
         case 'clearSessionAndCache':
             return Chat.clearSessionAndCache();

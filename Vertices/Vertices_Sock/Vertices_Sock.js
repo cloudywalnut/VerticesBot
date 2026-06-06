@@ -1,4 +1,4 @@
-﻿// Vertices16-baileys.js
+﻿// Vertices_Sock.js
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', 'userdata', '.env'), override: true, silent: true });
 
@@ -36,7 +36,7 @@ const e = require('cors');
 // ==============================
 // BOT CONFIGURATION & CONSTANTS
 // ==============================
-const VerticesVersion = path.basename(__filename).replace(/\.[^/.]+$/, "");
+const MODULE = path.basename(__filename, path.extname(__filename));
 
 // WhatsApp directories setup
 const WA_DATA_DIR = process.env.WA_DATA_DIR || path.resolve(__dirname, '../../userdata/whatsapp/session-Vertices');
@@ -154,8 +154,8 @@ async function reloadEnv(sock) {
         global.BOT_PHONE = parsed.BOT_PHONE;
         global.ASST_BOSS_PHONE = (parsed.ASST_BOSS_PHONE || "")
                 .split(",")
-                .map(phone => Number(phone.trim()))
-                .filter(num => !isNaN(num) && num !== 0);
+                .map(phone => phone.trim())
+                .filter(phone => /^\d+$/.test(phone));
         const rawBossPhone = parsed.BOSS_PHONE?.trim();
 
         // API Keys
@@ -252,7 +252,7 @@ function loadPersona() {
     const persona = runHelperCommand("loadPersona", global.PERSONA_FILE_LONG, global.PERSONA_FILE_SHORT, global.PERSONA_FILE_GROUP, global.PERSONA_FILE_CODER, global.PERSONA_FILE_BOSS);
 
     if (!persona || persona.trim().startsWith("Access denied")) {
-        console.error(`[${VerticesVersion}] Failed loading persona files.`);
+        console.error(`[${MODULE}] Failed loading persona files.`);
         return;
     }
 
@@ -267,7 +267,7 @@ function loadPersona() {
         VerticesPersonaCoder    = replaceVars(json.VerticesPersonaCoder);
         VerticesPersonaBoss = replaceVars(json.VerticesPersonaBoss);
     } catch (err) {
-        console.error(`[${VerticesVersion}] Failed parsing persona JSON:`, err.message);
+        console.error(`[${MODULE}] Failed parsing persona JSON:`, err.message);
     }
 }
 
@@ -382,7 +382,7 @@ async function start() {
             if (user && user.id) {
                 const phone = user.id.split(':')[0];
                 // Guardrail to prevent inconsistency in BOT PHONE
-                if (phone.split('@')[0] != global.BOT_PHONE){
+                if (phone.split('@')[0] !== global.BOT_PHONE) {
                     console.log("Inconsistency in BOT PHONE Number make sure to change the BOT PHONE number in BOT Settings");
                     process.exit(1);
                 }else{
@@ -687,7 +687,7 @@ async function detectPhotoIntent(history, userName, userMessage) {
 // function to send image for better code reusability
 async function imageSend(userPhone, cleanPhoneNo, userName, userMessage, imageRequestMatch, mergedChat){
     try {
-        if (imageRequestMatch == "YES") {
+        if (imageRequestMatch === "YES") {
             const { success, logMessage } = await handleImageRequest(
                 mergedChat,
                 sock,
@@ -709,7 +709,7 @@ async function imageSend(userPhone, cleanPhoneNo, userName, userMessage, imageRe
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, logMessage, global.CHAT_HISTORY_DIR);
                 return true;
             }
-        }else if (imageRequestMatch == "REPEAT"){
+        }else if (imageRequestMatch === "REPEAT"){
             const repeat_prompt = `Using strictly between 5 to 20 words, reply ${global.PERSON} that the images have
             already been sent earlier. Avoid greetings. Avoid using the same sentence structure as your previous replies.
             Always vary your reply contextually based on this chat history: ${mergedChat}`;
@@ -748,7 +748,7 @@ function isVerticesAwake() {
 async function simulateSeen(msg) {
     try {
         await sock.readMessages([msg.key]);
-        console.log(`${VerticesVersion} marked the chat as SEEN for ${msg.key.remoteJid}`);
+        console.log(`${MODULE} marked the chat as SEEN for ${msg.key.remoteJid}`);
     } catch (err) {
         console.warn("Failed to mark as seen:", err.message);
     }
@@ -764,10 +764,10 @@ async function simulateDelays(msg) {
         Math.random() * (global.TYPING_DURATION_MAX_SEC - global.TYPING_DURATION_MIN_SEC) * 1000
     ) + (global.TYPING_DURATION_MIN_SEC * 1000);
 
-    console.log(`${VerticesVersion} delaying response by ${(responseDelayMs / 1000).toFixed(2)} seconds...`);
+    console.log(`${MODULE} delaying response by ${(responseDelayMs / 1000).toFixed(2)} seconds...`);
     await customDelay(responseDelayMs);
 
-    console.log(`${VerticesVersion} is typing. Delay by ${(typingDurationMs / 1000).toFixed(2)} seconds...`);
+    console.log(`${MODULE} is typing. Delay by ${(typingDurationMs / 1000).toFixed(2)} seconds...`);
     
     // Send typing indicator
     await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
@@ -786,7 +786,7 @@ setInterval(async () => {
     for (const [key, value] of Object.entries(MsgBlocks)) {
 
         const diff = Date.now() - value.time;
-        const cleanPhoneNo_block = key.split('@')[0];
+        const cleanPhoneNoBlock = key.split('@')[0];
 
         if (value.processing) continue;
         value.processing = true;
@@ -802,7 +802,7 @@ setInterval(async () => {
 
                 // === IMAGE REQUEST DETECTION FOR INDIVIDUAL CHATS ===
                 const { imageRequestMatch, mergedChat } = await detectPhotoIntent(chatHistoryShort, userName, blockMessages);
-                const img_send_result = await imageSend(key, cleanPhoneNo_block, userName, blockMessages, imageRequestMatch, mergedChat);
+                const img_send_result = await imageSend(key, cleanPhoneNoBlock, userName, blockMessages, imageRequestMatch, mergedChat);
                 if (img_send_result) continue;
 
                 // === RAG FOR INDIVIDUAL CHATS ===
@@ -812,7 +812,7 @@ setInterval(async () => {
                 }
 
                 // === INDIVIDUAL CHAT RESPONSE GENERATION ===
-                const isFirstTime = !fs.existsSync(path.join(global.CHAT_HISTORY_DIR, `${cleanPhoneNo_block}.json`));
+                const isFirstTime = !fs.existsSync(path.join(global.CHAT_HISTORY_DIR, `${cleanPhoneNoBlock}.json`));
                 let prompt = "";
 
                 if (isFirstTime) {
@@ -838,10 +838,10 @@ setInterval(async () => {
                 try {
                     await sock.sendMessage(key, { text: reply });
                     console.log("Replied:", reply);
-                    runHelperCommand("logChat", cleanPhoneNo_block, userName, blockMessages, reply, global.CHAT_HISTORY_DIR);
+                    runHelperCommand("logChat", cleanPhoneNoBlock, userName, blockMessages, reply, global.CHAT_HISTORY_DIR);
                 } catch (err) {
-                    console.error(`[${VerticesVersion}] Failed to reply to user ${key}: ${err.message}`);
-                    runHelperCommand("logChat", cleanPhoneNo_block, userName, blockMessages, "[Reply failed]", global.CHAT_HISTORY_DIR);
+                    console.error(`[${MODULE}] Failed to reply to user ${key}: ${err.message}`);
+                    runHelperCommand("logChat", cleanPhoneNoBlock, userName, blockMessages, "[Reply failed]", global.CHAT_HISTORY_DIR);
                 }
 
             } catch (err) {
@@ -865,6 +865,12 @@ async function handleMessageUpsert(msgUpdate) {
     // Process ALL messages, not just the first one
     for (const msg of msgUpdate.messages) {
         if (!msg.message || msg.key.fromMe) continue;
+        const jid = msg.key.remoteJid || '';
+        // Ignore status updates (status@broadcast), broadcast lists (*@broadcast),
+        // and WhatsApp Channels (*@newsletter) — these are not real chats and should
+        // never be processed or logged. Private (@s.whatsapp.net, @lid) and group
+        // (@g.us) JIDs are allowed through.
+        if (jid === 'status@broadcast' || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) continue;
         await simulateSeen(msg);
         await processSingleMessage(msg);
     }
@@ -909,7 +915,7 @@ async function processSingleMessage(msg){
     ) ||
     "";
 
-    const isAssistBoss = global.ASST_BOSS_PHONE.includes(Number(cleanPhoneNo));
+    const isAssistBoss = global.ASST_BOSS_PHONE.includes(cleanPhoneNo);
     const isBoss = VerticesBoss.isBossMode(msg, global.BOSS_PHONE) || isAssistBoss;
 
     // === PAUSE CHECKING (Global or Individual) ===
@@ -918,14 +924,14 @@ async function processSingleMessage(msg){
         if (isUserOrGlobalPaused === "true" && cleanPhoneNo !== "923333483662" && cleanPhoneNo !== "215435576348678") {
             // Log the message even though the bot is paused
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Pause feature activated]", global.CHAT_HISTORY_DIR);
-            console.log(`${VerticesVersion} ignoring message — Paused globally / individually for ${cleanPhoneNo}.`);
+            console.log(`${MODULE} ignoring message — Paused globally / individually for ${cleanPhoneNo}.`);
             return;
         }
     }
 
     // === SLEEP MODE CHECK ===
     if (global.VerticesSleepMode==="On" && !isVerticesAwake() ) {
-        console.log (`${VerticesVersion} ignoring message. Vertices is currently sleeping Zzzzzzzz.`);
+        console.log (`${MODULE} ignoring message. Vertices is currently sleeping Zzzzzzzz.`);
         return;
     }
 
@@ -937,61 +943,52 @@ async function processSingleMessage(msg){
         let translatedBossCommand;
 
         // New features, allow Boss commands on voice as well:
-        if (msg.message.audioMessage){
-            boss_media = await downloadBaileysMedia(msg)
-            if (boss_media){
+        if (msg.message.audioMessage) {
+            const bossMedia = await downloadBaileysMedia(msg);
+            if (bossMedia) {
                 const voiceDir = path.join(__dirname, '../../userdata/voice');
-                const userId = userPhone.replace(/[@.]/g, '_');
-                const ts = Date.now();
-                
-                // Save the audio file
-                const audioBuffer = Buffer.from(boss_media.data, 'base64');
-                audioPath = path.join(voiceDir, `user_audio_${userId}_${ts}.${boss_media.mimetype.includes('ogg') ? 'ogg' : 'mp3'}`);
-                
-                // Ensure directory exists
-                if (!fs.existsSync(voiceDir)) {
+                const userId   = userPhone.replace(/[@.]/g, '_');
+                const ts       = Date.now();
+
+                const audioBuffer = Buffer.from(bossMedia.data, 'base64');
+                let audioPath = path.join(voiceDir, `user_audio_${userId}_${ts}.${bossMedia.mimetype.includes('ogg') ? 'ogg' : 'mp3'}`);
+
+                try {
                     fs.mkdirSync(voiceDir, { recursive: true });
-                }
-                
-                // Save file
-                fs.writeFileSync(audioPath, audioBuffer);
-                console.log(`Audio file saved: ${audioPath}`);
+                    fs.writeFileSync(audioPath, audioBuffer);
+                    console.log(`[${MODULE}] Boss audio saved: ${audioPath}`);
 
-                // Process voice note
-                const boss_interpretedCmd = await VoiceInterpret(audioPath);
-            
-                if (boss_interpretedCmd){
-                    console.log(`Boss's voice command: ${boss_interpretedCmd}`);
-                    translatedBossCommand = await translateBossCommand(boss_interpretedCmd, chosenURL, chosenModel, chosenAPI, 0.2, 100);
-                    if (translatedBossCommand){
-                        console.log(`Translated Boss Command: ${translatedBossCommand}`);
-                        if (translatedBossCommand == "false") {
-                            return;
-                        };
-                    }else{
-                        console.log(`Error Translating Boss Command`);
+                    const bossInterpretedCmd = await VoiceInterpret(audioPath);
+
+                    if (bossInterpretedCmd) {
+                        console.log(`[${MODULE}] Boss voice command: ${bossInterpretedCmd}`);
+                        translatedBossCommand = await translateBossCommand(bossInterpretedCmd, chosenURL, chosenModel, chosenAPI, 0.2, 100);
+                        if (translatedBossCommand) {
+                            console.log(`[${MODULE}] Translated Boss Command: ${translatedBossCommand}`);
+                            if (translatedBossCommand === "false") return;
+                        } else {
+                            console.log(`[${MODULE}] Error translating Boss command.`);
+                        }
                     }
+                } catch (err) {
+                    console.error(`[${MODULE}] Boss voice command error:`, err.message);
+                } finally {
+                    if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
                 }
-                
-                // Cleanup audio file
-                if (fs.existsSync(audioPath)) {
-                    fs.unlinkSync(audioPath);
-                }
-
             }
         }
 
-        if (translatedBossCommand){
+        if (translatedBossCommand) {
             userMessage = translatedBossCommand;
         }
-        bossCmd = userMessage.toLowerCase();
-        parts = userMessage.split(" ");
+        const bossCmd = userMessage.toLowerCase();
+        const parts   = userMessage.split(" ");
 
 
         // === PAUSE/UNPAUSE COMMANDS ===
         if (bossCmd.startsWith("pause all")) {
             runHelperCommand("pauseall",global.PAUSED_FILE);
-            VerticesReply = `${VerticesVersion} Global pause activated.`;
+            VerticesReply = `${MODULE} Global pause activated.`;
             await sock.sendMessage(userPhone, { text: VerticesReply });
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
             return;
@@ -999,7 +996,7 @@ async function processSingleMessage(msg){
 
         if (bossCmd.startsWith("unpause all")) {
             runHelperCommand("unpauseall",global.PAUSED_FILE);
-            VerticesReply = `${VerticesVersion} Global pause lifted.`;
+            VerticesReply = `${MODULE} Global pause lifted.`;
             await sock.sendMessage(userPhone, { text: VerticesReply });
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
             return;
@@ -1008,7 +1005,7 @@ async function processSingleMessage(msg){
         if (parts.length === 2 && bossCmd.startsWith("pause ")) {
             const target = parts[1].replace(/[^0-9]/g, "");        
             runHelperCommand("pause",global.PAUSED_FILE,target);        
-            VerticesReply = `${VerticesVersion} Paused user: ${target}`;
+            VerticesReply = `${MODULE} Paused user: ${target}`;
             await sock.sendMessage(userPhone, { text: VerticesReply });
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
             return;
@@ -1017,7 +1014,7 @@ async function processSingleMessage(msg){
         if (parts.length === 2 && bossCmd.startsWith("unpause ")) {
             const target = parts[1].replace(/[^0-9]/g, "");        
             runHelperCommand("unpause",global.PAUSED_FILE,target);        
-            VerticesReply = `${VerticesVersion} Unpaused user: ${target}`;
+            VerticesReply = `${MODULE} Unpaused user: ${target}`;
             await sock.sendMessage(userPhone, { text: VerticesReply });
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
             return;
@@ -1028,10 +1025,10 @@ async function processSingleMessage(msg){
             const filePath = path.join(global.CHAT_HISTORY_DIR, `${target}.json`);
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
-                VerticesReply = `${VerticesVersion} Deleted chat for user: ${target}`;
+                VerticesReply = `${MODULE} Deleted chat for user: ${target}`;
                 await sock.sendMessage(userPhone, { text: VerticesReply });
             }else{
-                VerticesReply = `${VerticesVersion} Chat for user: ${target} doesn't exist`;
+                VerticesReply = `${MODULE} Chat for user: ${target} doesn't exist`;
                 await sock.sendMessage(userPhone, { text: VerticesReply });
             }
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
@@ -1072,7 +1069,7 @@ async function processSingleMessage(msg){
                 return;
             }
         } catch (err) {
-            console.error(`${VerticesVersion} image save command failed:`, err.message);
+            console.error(`${MODULE} image save command failed:`, err.message);
         }
 
         // === FOLLOW-UP MODULE TRIGGER ===
@@ -1081,7 +1078,7 @@ async function processSingleMessage(msg){
         if (followMatch) {
             let daysToScan = followMatch[1] ? Number(followMatch[1]) : 3;
             if (isNaN(daysToScan) || daysToScan < 1 || daysToScan > 30) {
-                await sock.sendMessage(userPhone, { text: `${VerticesVersion}: Invalid day range. Please use: follow up 1 ~ 30 only.` });
+                await sock.sendMessage(userPhone, { text: `${MODULE}: Invalid day range. Please use: follow up 1 ~ 30 only.` });
                 return;
             }
             await runFollowUpWorkflow(
@@ -1095,7 +1092,7 @@ async function processSingleMessage(msg){
                 daysToScan
             );
 
-            await sock.sendMessage(userPhone, { text: `${VerticesVersion}: Scanned past ${daysToScan} day(s). Reply with your approved list within 2 mins.` });
+            await sock.sendMessage(userPhone, { text: `${MODULE}: Scanned past ${daysToScan} day(s). Reply with your approved list within 2 mins.` });
             return;
         }
 
@@ -1112,7 +1109,7 @@ async function processSingleMessage(msg){
                 chosenModel,
                 VerticesPersonaShort
             );
-            await sock.sendMessage(userPhone, { text: `${VerticesVersion}: Follow-ups completed (if valid).` });
+            await sock.sendMessage(userPhone, { text: `${MODULE}: Follow-ups completed (if valid).` });
             return;
         }
 
@@ -1148,12 +1145,12 @@ async function processSingleMessage(msg){
             const match = bossResponse.match(/IS_REPORT:\s*(YES|NO)(?:\s*REPLY:\s*([\s\S]*))?/i);
 
             if (!match) {
-                console.error(`[${VerticesVersion}] Unexpected bossResponse format: "${bossResponse}"`);
+                console.error(`[${MODULE}] Unexpected bossResponse format: "${bossResponse}"`);
                 try {
                     await sock.sendMessage(userPhone, { text: "Sorry, unable to process your request. Can rephrase?" });
                     runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Boss Mode parse error]", global.CHAT_HISTORY_DIR);
                 } catch (err) {
-                    console.error(`[${VerticesVersion}] Failed to reply to Boss: ${err.message}`);
+                    console.error(`[${MODULE}] Failed to reply to Boss: ${err.message}`);
                     runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Reply to Boss failed]", global.CHAT_HISTORY_DIR);
                 }
                 return;
@@ -1165,10 +1162,10 @@ async function processSingleMessage(msg){
             if (isReport === "NO") {
                 try {
                     await sock.sendMessage(userPhone, { text: aiReply });
-                    console.log(`${VerticesVersion} replied: ${aiReply}`);
+                    console.log(`${MODULE} replied: ${aiReply}`);
                     runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, aiReply, global.CHAT_HISTORY_DIR);
                 } catch (err) {
-                    console.error(`[${VerticesVersion}] Failed to reply to Boss: ${err.message}`);
+                    console.error(`[${MODULE}] Failed to reply to Boss: ${err.message}`);
                     runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Reply to Boss failed]", global.CHAT_HISTORY_DIR);
                 }
                 return;
@@ -1182,10 +1179,10 @@ async function processSingleMessage(msg){
 
             console.log("Code Gen:\n", gptCode);
             if (/console\.log/.test(gptCode)) {
-                console.warn(`${VerticesVersion} blocks code: Console.log was used.`);
+                console.warn(`${MODULE} blocks code: Console.log was used.`);
                 VerticesReply = "Blocked execution. Please rephrase your request.";
                 await sock.sendMessage(userPhone, { text: VerticesReply });
-                console.log(`${VerticesVersion} replied: ${VerticesReply}`);
+                console.log(`${MODULE} replied: ${VerticesReply}`);
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, VerticesReply, global.CHAT_HISTORY_DIR);
                 return;
             }
@@ -1202,7 +1199,7 @@ async function processSingleMessage(msg){
 
                 const explainedReply = await getAIResponse(chosenEngine, VerticesPersonaBoss, smartReplyPrompt, 150, 0.4);
                 await sock.sendMessage(userPhone, { text: explainedReply });
-                console.log(`${VerticesVersion} replied: ${explainedReply}`);
+                console.log(`${MODULE} replied: ${explainedReply}`);
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, explainedReply, global.CHAT_HISTORY_DIR);
                 return;
             }
@@ -1247,7 +1244,7 @@ async function processSingleMessage(msg){
                             if (imageSummary) {
                                 console.log(`Image summary generated: ${imageSummary}`);
                             }
-                        } else if (mediaTypeAI == "pdf") {
+                        } else if (mediaTypeAI === "pdf") {
                             pdfSummary = await summarizePdf(media, chosenAPI);
                             if (pdfSummary) {
                                 console.log(`PDF summary generated: ${pdfSummary}`);
@@ -1301,7 +1298,7 @@ async function processSingleMessage(msg){
                                 .join('\n');
 
                             // RAG for voice notes
-                            if (global.RAG == "On") {
+                            if (global.RAG === "On") {
                                 RAGprompt = await genRAGprompt(interpretedText, senderName, VerticesPersonaShort, chosenURL, chosenModel, chosenAPI);
                             }
                             
@@ -1372,7 +1369,7 @@ async function processSingleMessage(msg){
             console.log (`TAReply =============> ${TAReply}`);
 
             // === RAG FOR GROUP CHATS ===
-            if (global.RAG == "On") {
+            if (global.RAG === "On") {
                 RAGprompt = await genRAGprompt(userMessage, senderName, VerticesPersonaShort, chosenURL, chosenModel, chosenAPI);
             }
 
@@ -1425,19 +1422,19 @@ async function processSingleMessage(msg){
                     await sendImagesToGroup(sock, userPhone, TAImages);
                 }
             } catch (err) {
-                console.error(`${global.BOT_NAME} on ${VerticesVersion}: Group reply failed: ${err.message}`);
+                console.error(`${global.BOT_NAME} on ${MODULE}: Group reply failed: ${err.message}`);
                 groupResult = "error";
             }
 
             if (groupResult === "replied") {
-                console.log(`${global.BOT_NAME} on ${VerticesVersion}: replied Group message from ${groupName}`);
+                console.log(`${global.BOT_NAME} on ${MODULE}: replied Group message from ${groupName}`);
             } else {
-                console.log(`${global.BOT_NAME} on ${VerticesVersion}: didn't reply for Group ${groupName}, logged only.`);
+                console.log(`${global.BOT_NAME} on ${MODULE}: didn't reply for Group ${groupName}, logged only.`);
             }
             return;
 
         } else {
-            console.log(`${global.BOT_NAME} on ${VerticesVersion}: ignoring message — Not in allowed groups (${groupName})`);
+            console.log(`${global.BOT_NAME} on ${MODULE}: ignoring message — Not in allowed groups (${groupName})`);
             return;
         }
     }
@@ -1472,7 +1469,7 @@ async function processSingleMessage(msg){
                         if (imageSummary) {
                             imagePrompt = `This latest chat also has an image of this description: ${imageSummary}`;
                         }
-                    } else if (mediaTypeAI == "pdf"){
+                    } else if (mediaTypeAI === "pdf") {
                         pdfSummary = await summarizePdf(media, chosenAPI);
                         if (pdfSummary) {
                             pdfPrompt = `This latest chat also has a document pdf of this description: ${pdfSummary}`;
@@ -1499,8 +1496,8 @@ async function processSingleMessage(msg){
             }
         }
 
-        if (pdfPrompt){
-            prompt = `This is your most recent chat history with ${userName}:\n${chatHistoryLong}\n${userName}: ${userMessage}. ${pdfPrompt || ""}. \n
+        if (pdfPrompt) {
+            const prompt = `This is your most recent chat history with ${userName}:\n${chatHistoryLong}\n${userName}: ${userMessage}. ${pdfPrompt || ""}. \n
             The local date & time now is ${currentDateTime}.\nBased on the above chats, your given persona & your role in the company, 
             generate a reply, without any greeting (unless the ${global.PERSON} is greeting you), to the latest message from ${userName}. 
             Vary your replies if the topic has already been replied or answered.`;
@@ -1510,7 +1507,7 @@ async function processSingleMessage(msg){
                 console.log("Replied:", reply);
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, reply, global.CHAT_HISTORY_DIR);
             } catch (err) {
-                console.error(`[${VerticesVersion}] Failed to reply to user ${userPhone}: ${err.message}`);
+                console.error(`[${MODULE}] Failed to reply to user ${userPhone}: ${err.message}`);
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Reply failed]", global.CHAT_HISTORY_DIR);
             }finally{
                 return;
@@ -1558,7 +1555,7 @@ async function processSingleMessage(msg){
                             .join('\n');
 
                         // RAG for individual voice notes
-                        if (global.RAG == "On") {
+                        if (global.RAG === "On") {
                             RAGprompt = await genRAGprompt(interpretedText, userName, VerticesPersonaShort, chosenURL, chosenModel, chosenAPI);
                         }
                         

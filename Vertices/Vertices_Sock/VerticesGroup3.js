@@ -1,148 +1,100 @@
-﻿// VerticesGroup2.js
-const fs = require("fs");
+// VerticesGroup3.js
+const fs   = require("fs");
 const path = require("path");
 const axios = require("axios");
-const HelperVersion = path.basename(__filename).replace(/\.[^/.]+$/, "");
+const { default: axiosRetry } = require('axios-retry');
+const MODULE = path.basename(__filename, path.extname(__filename));
 
+axiosRetry(axios, { retries: 2, retryDelay: axiosRetry.exponentialDelay });
+const TIMEOUT_MS = parseInt(process.env.LLM_TIMEOUT_MS || "120000");
 
-
-
-
-
-
-// Detect if Vertices's BotName is mentioned:
+// === GROUP DETECTION ===
 function isBotNameMentioned(botName, msgText) {
     return msgText.toLowerCase().includes(botName.toLowerCase());
 }
 
-
-// AI decision logic using OpenAI-compatible API
-/*
+// === AI GROUP DECISION ===
 async function getGroupReplyDecision(persona, prompt, aiApiKey, aiModel, aiURL) {
     try {
         const response = await axios.post(aiURL, {
             model: aiModel,
             messages: [
                 { role: "system", content: persona },
-                { role: "user", content: prompt }
+                { role: "user",   content: prompt }
             ],
-            temperature: 0.6,
-            max_tokens: 300
+            temperature: 0.5,
+            max_tokens:  800
         }, {
-            headers: { "Authorization": `Bearer ${aiApiKey}`, "Content-Type": "application/json" }
+            headers: {
+                "Authorization": `Bearer ${aiApiKey}`,
+                "Content-Type":  "application/json"
+            },
+            timeout: TIMEOUT_MS
         });
 
+        if (!response.data?.choices?.[0]) return "REPLY: ";
         return response.data.choices[0].message.content.trim();
     } catch (err) {
-        console.error("Group AI error:", err);
+        console.error(`[${MODULE}] Group AI error:`, err.code || err.message);
         return "REPLY: ";
     }
 }
-*/
 
-// NEW REPLACEMENT FOR ABOVE
-const { default: axiosRetry } = require('axios-retry');
-axiosRetry(axios, { retries: 2, retryDelay: axiosRetry.exponentialDelay });
-const TIMEOUT_MS = parseInt(process.env.LLM_TIMEOUT_MS || "120000");
-
-
-async function getGroupReplyDecision(persona, prompt, aiApiKey, aiModel, aiURL) {
-    try {
-        const response = await axios.post(
-            aiURL,
-            {
-                model: aiModel,
-                messages: [
-                    { role: "system", content: persona },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.5,
-                max_tokens: 800
-            },
-            {
-                headers: {
-                    "Authorization": `Bearer ${aiApiKey}`,
-                    "Content-Type": "application/json"
-                },
-                //timeout: 90000 // 90s timeout
-                //timeout: 120000 // 2 minutes timeout
-                timeout: TIMEOUT_MS // defined in .env file
-            }
-        );
-
-        return response.data.choices[0].message.content.trim();
-    } catch (err) {
-        console.error(`[${HelperVersion}] Group AI error: ${err.code || err.message}`);
-        return "REPLY: ";
-    }
-}
-// NEW REPLACEMENT FOR ABOVE
-
-
-
-
-// Extract reply from format: REPLY: <text>
 function extractGroupReply(responseText) {
     const match = responseText.match(/REPLY:\s*([\s\S]*)/i);
     return match ? match[1].trim() : "";
 }
 
-// Parse decision block into object
 function parseGroupDecisionAIResponse(responseText) {
-    const result = {
-        shouldReply: false,
-        type: "",
-        reason: ""
-    };
+    const result = { shouldReply: false, type: "", reason: "" };
 
-    const replyMatch = responseText.match(/REPLY:\s*(YES|NO)/i);
-    const typeMatch = responseText.match(/TYPE:\s*(\w+)/i);
+    const replyMatch  = responseText.match(/REPLY:\s*(YES|NO)/i);
+    const typeMatch   = responseText.match(/TYPE:\s*(\w+)/i);
     const reasonMatch = responseText.match(/REASON:\s*(.*)/i);
 
-    if (replyMatch && replyMatch[1].toLowerCase() === "yes") {
-        result.shouldReply = true;
-    }
-    if (typeMatch) result.type = typeMatch[1].toLowerCase();
+    if (replyMatch?.[1]?.toLowerCase() === "yes") result.shouldReply = true;
+    if (typeMatch)   result.type   = typeMatch[1].toLowerCase();
     if (reasonMatch) result.reason = reasonMatch[1].trim();
 
     return result;
 }
 
-// Wrapper for friendly override prompt
 function wrapFriendlyPrompt(originalPrompt) {
-    return `
-Reply to the original chat prompt:
-${originalPrompt}
-
-REPLY:`;
+    return `Reply to the original chat prompt:\n${originalPrompt}\n\nREPLY:`;
 }
 
-// Log all group messages to JSON file
+// === CHAT LOGGING ===
+// NOTE: Keys user_phone, user_name, user_message, Vertices_response are persisted to disk — do not rename.
 function logGroupChat(jsonPath, userPhone, userName, msgText, botReply = "") {
     const newLog = {
-        datetime: new Date().toISOString(),
-        user_phone: userPhone,
-        user_name: userName,
-        user_message: msgText,
+        datetime:          new Date().toISOString(),
+        user_phone:        userPhone,
+        user_name:         userName,
+        user_message:      msgText,
         Vertices_response: botReply
     };
 
-    const existing = fs.existsSync(jsonPath)
-        ? JSON.parse(fs.readFileSync(jsonPath, "utf8"))
-        : [];
+    let existing = [];
+    if (fs.existsSync(jsonPath)) {
+        try { existing = JSON.parse(fs.readFileSync(jsonPath, "utf8")); } catch {}
+    }
 
     existing.push(newLog);
-    fs.writeFileSync(jsonPath, JSON.stringify(existing, null, 2));
+    try {
+        fs.writeFileSync(jsonPath, JSON.stringify(existing, null, 2));
+    } catch (err) {
+        console.error(`[${MODULE}] Failed to log group chat:`, err.message);
+    }
 }
 
-// === Main handler for approved group messages ===
+// === MAIN GROUP MESSAGE HANDLER ===
 async function handleGroupMessage(options) {
     const {
         msg,
         chat,
         groupName,
-        botName, //for name mentioned of bot
-        botNumber, //for future use of @mention in whatsapp
+        botName,
+        botNumber,
         client,
         CHAT_HISTORY_DIR,
         personaLong,
@@ -155,34 +107,29 @@ async function handleGroupMessage(options) {
         runHelperCommand
     } = options;
 
-    const senderPhone = msg.key.remoteJid;
+    const senderPhone  = msg.key.remoteJid;
     const cleanedPhone = senderPhone.split('@')[0];
-    const senderName = msg.pushName || "GroupMember";
+    const senderName   = msg.pushName || "GroupMember";
 
-    // For Baileys all caption and Filename need to be handled seperately
     const msgText =
-    msg.message.conversation ||
-    msg.message.extendedTextMessage?.text ||
-    msg.message.imageMessage?.caption ||
-    msg.message.videoMessage?.caption ||
-    (
-        (msg.message.documentMessage?.caption || "") + 
-        (msg.message.documentMessage?.fileName ? " " + msg.message.documentMessage.fileName : "")
-    ) ||
-    "";
+        msg.message?.conversation ||
+        msg.message?.extendedTextMessage?.text ||
+        msg.message?.imageMessage?.caption ||
+        msg.message?.videoMessage?.caption ||
+        ((msg.message?.documentMessage?.caption || "") +
+         (msg.message?.documentMessage?.fileName ? " " + msg.message.documentMessage.fileName : "")) ||
+        "";
 
     const isBotMentioned = isBotNameMentioned(botName, msgText);
-
     const chatFile = path.join(CHAT_HISTORY_DIR, `${cleanedPhone}.json`);
 
     const hasMedia = msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.documentMessage;
     if (!msgText && !hasMedia) {
-        console.log(`Empty group message from ${senderName}, skipping...`);
+        console.log(`[${MODULE}] Empty group message from ${senderName}, skipping.`);
         return "skipped";
     }
 
     const history = runHelperCommand("getLastChatHistory", cleanedPhone, HISTORY_SHORT.toString(), CHAT_HISTORY_DIR);
-
     const cleanedHistory = history
         .split('\n')
         .filter(line => line.trim().toLowerCase() !== 'you:')
@@ -207,77 +154,65 @@ async function handleGroupMessage(options) {
     const aiRawDecision = await getGroupReplyDecision(personaShort, aiDecisionPrompt, chosenAPI, chosenModel, chosenURL);
     const decision = parseGroupDecisionAIResponse(aiRawDecision);
 
-    console.log(`[DECISION] REPLY: ${decision.shouldReply} | TYPE: ${decision.type} | REASON: ${decision.reason}`);
+    console.log(`[${MODULE}] REPLY: ${decision.shouldReply} | TYPE: ${decision.type} | REASON: ${decision.reason}`);
 
-    const forceReply = !decision.shouldReply && (isBotMentioned);
+    const forceReply = !decision.shouldReply && isBotMentioned;
 
     if (!decision.shouldReply && !forceReply) {
-        console.log(`Vertices skipped reply (AI decision: NO, No mention of Bot Name). Reason: ${decision.reason}`);
+        console.log(`[${MODULE}] Skipped reply (AI: NO, no bot mention). Reason: ${decision.reason}`);
         logGroupChat(chatFile, cleanedPhone, senderName, msgText, "");
         return "logged_only";
     } else if (forceReply) {
-        console.log(`Overriding AI decision because bot name was detected.`);
+        console.log(`[${MODULE}] Overriding AI decision — bot name was mentioned.`);
     }
 
-    const finalPrompt = forceReply
-        ? wrapFriendlyPrompt(prompt)
-        : prompt;
-
-    const aiRaw = await getGroupReplyDecision(personaLong, finalPrompt, chosenAPI, chosenModel, chosenURL);
-
+    const finalPrompt = forceReply ? wrapFriendlyPrompt(prompt) : prompt;
+    const aiRaw  = await getGroupReplyDecision(personaLong, finalPrompt, chosenAPI, chosenModel, chosenURL);
     let reply = extractGroupReply(aiRaw);
     if (!reply) reply = aiRaw.trim();
 
     const loweredReply = reply.toLowerCase();
     if (!loweredReply || loweredReply === "(empty)") {
-        console.log(`AI decided not to reply to group ${groupName} for message from ${senderName}`);
+        console.log(`[${MODULE}] AI chose not to reply in group ${groupName} for ${senderName}.`);
         logGroupChat(chatFile, cleanedPhone, senderName, msgText, "");
         return "logged_only";
     }
 
     const cleanedReply = reply.trim().toUpperCase();
     if (["YES", "NO", "REPLY:"].includes(cleanedReply) || cleanedReply.startsWith("TYPE:") || cleanedReply.startsWith("REASON:")) {
-        console.log("AI response looks like a decision block. Skipping actual reply.");
+        console.log(`[${MODULE}] AI response looks like a decision block — skipping reply.`);
         logGroupChat(chatFile, cleanedPhone, senderName, msgText, "");
         return "logged_only";
     }
 
-  //  await msg.reply(reply); //original
-
-  try {
-    await client.sendMessage(senderPhone, { text: reply });
-} catch (err) {
-    console.error(`Failed to reply to group message from ${senderName}: ${err.message}`);
-    console.warn("Skipping reply to prevent crash.");
-    logGroupChat(chatFile, cleanedPhone, senderName, msgText, "[Reply failed]");
-    return "error";
-}
-
+    try {
+        await client.sendMessage(senderPhone, { text: reply });
+    } catch (err) {
+        console.error(`[${MODULE}] Failed to reply to group message from ${senderName}:`, err.message);
+        logGroupChat(chatFile, cleanedPhone, senderName, msgText, "[Reply failed]");
+        return "error";
+    }
 
     logGroupChat(chatFile, cleanedPhone, senderName, msgText, reply);
-    console.log("AI replied to group:", reply);
+    console.log(`[${MODULE}] Replied to group:`, reply);
     return "replied";
 }
 
+// === IMAGE SENDING ===
 async function sendImagesToGroup(client, chatId, imagePaths) {
     if (!Array.isArray(imagePaths) || imagePaths.length === 0) {
-        console.log("No images to send.");
+        console.log(`[${MODULE}] No images to send.`);
         return;
     }
 
     for (const imgPath of imagePaths) {
         try {
-            const media = {
-                url: imgPath
-            };
-            await client.sendMessage(chatId, { image: media });
-            console.log(`Sent image: ${imgPath}`);
+            await client.sendMessage(chatId, { image: { url: imgPath } });
+            console.log(`[${MODULE}] Sent image: ${imgPath}`);
         } catch (err) {
-            console.error(`Failed to send image ${imgPath}:`, err.message);
+            console.error(`[${MODULE}] Failed to send image ${imgPath}:`, err.message);
         }
     }
 }
 
-module.exports = {
-    handleGroupMessage, sendImagesToGroup, isBotNameMentioned
-};
+module.exports = { handleGroupMessage, sendImagesToGroup, isBotNameMentioned };

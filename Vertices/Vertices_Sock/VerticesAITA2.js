@@ -1,62 +1,59 @@
-﻿// VerticesAITA2.js
-const fs = require('fs');
+// VerticesAITA2.js
+const fs   = require('fs');
 const path = require('path');
 const { AIQuery } = require("./VerticesAIQuery1.js");
-
-const HelperVersion = path.basename(__filename).replace(/\.[^/.]+$/, '');
+const MODULE = path.basename(__filename, path.extname(__filename));
 
 if (!process.env.TA_FOLDER) {
-    console.error(`${HelperVersion}: TA_FOLDER missing in .env file`);
+    console.error(`[${MODULE}] TA_FOLDER missing in .env file`);
     process.exit(1);
 }
 
-// === Load the TA database once ===
 const TA_JSON_PATH = path.join(process.env.TA_FOLDER, 'ta_combined.json');
+const CHARTS_PATH  = process.env.CHARTS_FOLDER;
 
-// The image Path
-const CHARTS_PATH = process.env.CHARTS_FOLDER;
-
-// 🔑 Manual alias mapping
-const aliases = {
-    "GOLD": "XAUUSD",
-    "SILVER": "XAGUSD",
-    "DOW": "DJ30",
-    "DOWJONES": "DJ30",
-    "NASDAQ": "NAS100",
-    "NAS": "NAS100",
-    "SP500": "SP500",
-    "SP": "SP500",
-    "SPC": "SP500",
-    "OIL": "USOIL",
-    "WTI": "USOIL",
-    "CRUDE": "USOIL",
-    "BRENT": "UKOIL",
-    "ETH": "ETHUSD",
-    "ETHEREUM": "ETHUSD",
-    "BTC": "BTCUSD",
-    "BITCOIN": "BTCUSD",
+// === ALIAS MAPPING ===
+const ALIASES = {
+    "GOLD":      "XAUUSD",
+    "SILVER":    "XAGUSD",
+    "DOW":       "DJ30",
+    "DOWJONES":  "DJ30",
+    "NASDAQ":    "NAS100",
+    "NAS":       "NAS100",
+    "SP500":     "SP500",
+    "SP":        "SP500",
+    "SPC":       "SP500",
+    "OIL":       "USOIL",
+    "WTI":       "USOIL",
+    "CRUDE":     "USOIL",
+    "BRENT":     "UKOIL",
+    "ETH":       "ETHUSD",
+    "ETHEREUM":  "ETHUSD",
+    "BTC":       "BTCUSD",
+    "BITCOIN":   "BTCUSD"
 };
 
 let taData = null;
 
+// === DATA LOADING ===
 function loadTAData() {
-    if (!taData) {
-        if (!fs.existsSync(TA_JSON_PATH)) {
-            console.error(`${HelperVersion}: TA JSON file not found at ${TA_JSON_PATH}`);
-            process.exit(1);
-        }
-        try {
-            taData = JSON.parse(fs.readFileSync(TA_JSON_PATH, 'utf8'));
-        } catch (err) {
-            console.error(`${HelperVersion}: Error loading TA JSON:`, err.message);
-            taData = {};
-        }
+    if (taData) return taData;
+
+    if (!fs.existsSync(TA_JSON_PATH)) {
+        console.error(`[${MODULE}] TA JSON file not found at ${TA_JSON_PATH}`);
+        process.exit(1);
+    }
+    try {
+        taData = JSON.parse(fs.readFileSync(TA_JSON_PATH, 'utf8'));
+    } catch (err) {
+        console.error(`[${MODULE}] Error loading TA JSON:`, err.message);
+        taData = {};
     }
     return taData;
 }
 
-// === GPT Symbol+Duration Prompt ===
-const GPTSymbolIntentPrompt = `
+// === SYMBOL EXTRACTION ===
+const GPT_SYMBOL_INTENT_PROMPT = `
 You're a trading analyst. A user will ask about a market symbol, timeframe or trading opportunities.
 
 Return JSON only like:
@@ -82,73 +79,51 @@ Examples:
 USER: __MSG__
 `.trim();
 
-// === Call GPT to extract symbol & duration intent ===
 async function extractSymbolAndDuration(userMessage, chosenURL, chosenModel, chosenAPI, systemPrompt) {
-    const prompt = GPTSymbolIntentPrompt.replace("__MSG__", userMessage);
-
-    const result = await AIQuery(
-        prompt,
-        chosenURL,
-        chosenModel,
-        chosenAPI,
-        systemPrompt,
-        0.3,
-        100
-    );
+    const prompt = GPT_SYMBOL_INTENT_PROMPT.replace("__MSG__", userMessage);
+    const result = await AIQuery(prompt, chosenURL, chosenModel, chosenAPI, systemPrompt, 0.3, 100);
 
     try {
         const parsed = JSON.parse(result);
         return {
-            symbol: parsed.symbol?.toUpperCase() || null,
+            symbol:   parsed.symbol?.toUpperCase()   || null,
             duration: parsed.duration?.toUpperCase() || null
         };
-    } catch (err) {
-        console.error(`${HelperVersion}: Failed to parse GPT result:`, result);
+    } catch {
+        console.error(`[${MODULE}] Failed to parse GPT symbol result:`, result);
         return { symbol: null, duration: null };
     }
 }
 
+// === FORMATTING ===
 function formatToNearestQuarterHour(date) {
-    // Round to nearest 15 minutes
-    const roundedDate = new Date(date);
-    const minutes = roundedDate.getMinutes();
-    roundedDate.setMinutes(Math.round(minutes / 15) * 15);
-    roundedDate.setSeconds(0);
-    roundedDate.setMilliseconds(0);
-    
-    // Format as "Jul 17 at 5:30 PM"
-    return roundedDate.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
+    const rounded = new Date(date);
+    rounded.setMinutes(Math.round(rounded.getMinutes() / 15) * 15);
+    rounded.setSeconds(0);
+    rounded.setMilliseconds(0);
+    return rounded.toLocaleString('en-US', {
+        month:  'short',
+        day:    'numeric',
+        hour:   'numeric',
         minute: '2-digit',
         hour12: true
     }).replace(',', ' at');
 }
 
-// === Format a single TA block ===
 function formatTAResponse(block) {
-    const symbol = block.Symbol;
-    const duration = block['Trade Duration']; // SCALP, INTRADAY, SWING
+    const symbol   = block.Symbol;
+    const duration = block['Trade Duration'];
 
-    // Map duration to relevant timeframes
     const durationTimeframes = {
-        'SCALP': ['M15', 'H1'],
+        'SCALP':    ['M15', 'H1'],
         'INTRADAY': ['H4', 'D1'],
-        'SWING': ['D1', 'W1']
+        'SWING':    ['D1', 'W1']
     };
 
     const timeframes = durationTimeframes[duration] || [];
+    const images = timeframes.map(tf => path.join(CHARTS_PATH, `${symbol}_${tf}.jpg`));
 
-    // ✅ Construct full image paths
-    console.log(CHARTS_PATH);
-    const images = timeframes.map(tf => 
-        path.join(CHARTS_PATH, `${symbol}_${tf}.jpg`)
-    );
-
-    // Convert ISO timestamp to human-readable format
-    const analyzedAt = new Date(block['Analyzed At']);
-    const humanReadableTime = formatToNearestQuarterHour(analyzedAt);
+    const humanReadableTime = formatToNearestQuarterHour(new Date(block['Analyzed At']));
 
     const message = [
         `📈 *${symbol}* — *${duration}* (${block.Timeframe})`,
@@ -161,36 +136,28 @@ function formatTAResponse(block) {
     return { message, images };
 }
 
-// === Main function to handle full user request ===
-// with FALLBACK answers if SWING->INTRADAY->SCALP
+// === MAIN HANDLER ===
 async function getTAReplyFromMessage(userMessage, chosenURL, chosenModel, chosenAPI, systemPrompt) {
     const ta = loadTAData();
     let { symbol, duration } = await extractSymbolAndDuration(userMessage, chosenURL, chosenModel, chosenAPI, systemPrompt);
 
     if (!symbol && !duration) return null;
 
-    // 🔑 Normalize: strip .s if present
     let normalizedSymbol = symbol ? symbol.replace(/\.s$/i, "").toUpperCase() : null;
-
-    if (normalizedSymbol && aliases[normalizedSymbol]) {
-        normalizedSymbol = aliases[normalizedSymbol];
+    if (normalizedSymbol && ALIASES[normalizedSymbol]) {
+        normalizedSymbol = ALIASES[normalizedSymbol];
     }
 
-    // 🔑 Try lookups: plain, with .s, with .S
+    // Try lookup with and without .s suffix variants
     let symbolKey = null;
-    if (normalizedSymbol && ta[normalizedSymbol]) {
-        symbolKey = normalizedSymbol;
-    } else if (normalizedSymbol && ta[normalizedSymbol + ".s"]) {
-        symbolKey = normalizedSymbol + ".s";
-    } else if (normalizedSymbol && ta[normalizedSymbol + ".S"]) {
-        symbolKey = normalizedSymbol + ".S";
-    }
+    if (normalizedSymbol && ta[normalizedSymbol])         symbolKey = normalizedSymbol;
+    else if (normalizedSymbol && ta[normalizedSymbol + ".s"]) symbolKey = normalizedSymbol + ".s";
+    else if (normalizedSymbol && ta[normalizedSymbol + ".S"]) symbolKey = normalizedSymbol + ".S";
 
     if (!symbolKey) {
         return { message: `Sorry, can't find any TA for that symbol...`, images: [] };
     }
 
-    // 🔑 Duration handling unchanged
     if (duration) {
         const block = ta[symbolKey][duration];
         if (block) return formatTAResponse(block);
@@ -210,7 +177,7 @@ async function getTAReplyFromMessage(userMessage, chosenURL, chosenModel, chosen
         return { message: `I can't find any analysis data for ${duration.toLowerCase()} of ${normalizedSymbol}.`, images: [] };
     }
 
-    // If no specific duration: return all
+    // No specific duration requested — return all timeframes
     return {
         message: Object.entries(ta[symbolKey])
             .map(([label, block]) => `*${label}*\n${formatTAResponse(block).message}`)
@@ -219,7 +186,4 @@ async function getTAReplyFromMessage(userMessage, chosenURL, chosenModel, chosen
     };
 }
 
-// The image file paths are already being constructed here in the code on return
-module.exports = {
-    getTAReplyFromMessage
-};
+module.exports = { getTAReplyFromMessage };

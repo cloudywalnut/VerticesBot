@@ -1,17 +1,27 @@
-﻿// VerticesMemMgmt1.js
+// VerticesMemMgmt1.js
 const fs   = require('fs');
 const path = require('path');
 
 const PERM_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'Verticesmemory-perm.txt');
 const TEMP_FILE = path.join(__dirname, '..', '..', 'userdata', 'mem', 'Verticesmemory-temp.txt');
 
+// === FILE UTILITIES ===
 function readFile(file) {
-    return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+    try {
+        return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+    } catch (err) {
+        console.error('[VerticesMemMgmt1] Failed to read file:', err.message);
+        return '';
+    }
 }
 
 function writeFile(file, content) {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, content, 'utf-8');
+    try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, content, 'utf-8');
+    } catch (err) {
+        console.error('[VerticesMemMgmt1] Failed to write file:', err.message);
+    }
 }
 
 function appendToFile(file, content) {
@@ -22,7 +32,8 @@ function appendToFile(file, content) {
     writeFile(file, joined);
 }
 
-// fullMessage is the entire boss command string e.g. "add perm Buy gold today"
+// === MEMORY COMMAND HANDLER ===
+// fullMessage is the entire boss command string, e.g. "add perm Buy gold today"
 function handleMemCommand(fullMessage) {
     const parts   = (fullMessage || '').trim().split(/\s+/);
     const command = parts.slice(0, 2).join(' ').toLowerCase();

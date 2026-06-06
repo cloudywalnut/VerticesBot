@@ -1,8 +1,10 @@
-﻿const path = require("path");
+// VerticesBossCmd.js
+const path = require("path");
 const { AIQuery } = require("./VerticesAIQuery1");
 
-bossCmdTranslator_prompt = `You are a command interpreter for a WhatsApp bot. Your job is to read the user’s message understand
-the exact intent behind that message and convert it into the exact bot command format that the system can understand.
+// === SYSTEM PROMPT FOR BOSS COMMAND TRANSLATION ===
+const bossCmdTranslatorPrompt = `You are a command interpreter for a WhatsApp bot. Your job is to read the user's message, understand
+the exact intent behind that message, and convert it into the exact bot command format that the system can understand.
 Follow these rules strictly:
 
 If the command is something similar or related to Pause/Unpause:
@@ -41,10 +43,8 @@ If the command is related to none of the above defined stuff, just simply answer
 
 Always output only the properly formatted command. Do not add explanations, greetings, or extra text.`;
 
-async function translateBossCommand(boss_interpretedCmd, chosenURL, chosenModel, chosenAPI, Temp, MaxToken){
-    return AIQuery(boss_interpretedCmd, chosenURL, chosenModel, chosenAPI, bossCmdTranslator_prompt, Temp, MaxToken);
+async function translateBossCommand(bossInterpretedCmd, chosenURL, chosenModel, chosenAPI, temp, maxToken) {
+    return AIQuery(bossInterpretedCmd, chosenURL, chosenModel, chosenAPI, bossCmdTranslatorPrompt, temp, maxToken);
 }
 
-module.exports = {
-    translateBossCommand
-};
+module.exports = { translateBossCommand };
