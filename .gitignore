@@ -54,3 +54,7 @@ userdata/json/bot.log
 userdata/json/bot-pid.json
 userdata/json/pausedUsers.json
 userdata/json/notifyboss-*.json
+userdata/json/wa-status.json
+
+# Allow env example - override the **/.env* rule above
+!userdata/.env.example
