@@ -63,7 +63,7 @@ const localModel = "Qwen2.5-7B-Instruct-1M-Q4_K_M";
 
 // DO NOT USE ANTHROPIC FOR GROUP CHAT BOT - Individual chats only
 const antURL = "https://api.anthropic.com/v1/messages";
-const antModel = "claude-3-7-sonnet-20250219";
+const antModel = "claude-sonnet-4-6";
 
 // Selected AI Engine (set during initialization)
 let chosenEngine = "";
@@ -167,7 +167,7 @@ async function reloadEnv(sock) {
 
         // Bot behavior settings
         global.autoClearCache = parsed.AUTO_CLEAR_CACHE || "N";
-        global.autoEngineChoice = parsed.AUTO_ENGINE_CHOICE || "2"; // default to OpenAI
+        global.autoEngineChoice = parsed.AUTO_ENGINE_CHOICE || "1"; // default to OpenAI
 
         // Delays and timing
         global.RESPONSE_DELAY_MIN_SEC = parseInt(parsed.RESPONSE_DELAY_MIN_SEC) || 2;
@@ -199,7 +199,7 @@ async function reloadEnv(sock) {
 
         // Resolve BOSS_PHONE to include WhatsApp ID
         if (rawBossPhone) {
-            global.BOSS_PHONE = rawBossPhone.includes('@') ? rawBossPhone : rawBossPhone + "@s.whatsapp.net";
+            global.BOSS_PHONE = rawBossPhone.includes('@') ? rawBossPhone : rawBossPhone + (rawBossPhone.length <= 12 ? '@s.whatsapp.net' : '@lid');
             console.log('[Env Reloaded] BOSS_PHONE:', global.BOSS_PHONE);
         }
 
@@ -473,12 +473,12 @@ async function initializeBot() {
     }
 
     // Handle AI Engine Selection
-    console.log("Choose AI engine: 1.DeepSeek  2.OpenAI  3.Qwen  4.Anthropic  5.Local: ");
-    let engineChoice = await waitForUserInputOrDefault(global.autoEngineChoice || "2", 2000);
+    console.log("Choose AI engine: 1.OpenAI (Recommended)  2.DeepSeek  3.Qwen  4.Anthropic  5.Local: ");
+    let engineChoice = await waitForUserInputOrDefault(global.autoEngineChoice || "1", 2000);
     console.log(`Selected AI Engine: ${engineChoice}`);
 
     switch (engineChoice.trim()) {
-        case "1":
+        case "2":
             chosenEngine = "deepseek"; chosenAPI = global.deepseekApi; chosenURL = deepseekURL; chosenModel = deepseekModel;
             break;
         case "3":
@@ -1326,14 +1326,11 @@ async function processSingleMessage(msg){
 
                     } catch (err) {
                         console.error("Error while handling voice message:", err.message);
-                    }finally{
-                        // Cleanup audio file
-                        if (fs.existsSync(replyPath)) {
-                            fs.unlinkSync(replyPath);
-                        }
-                        if (fs.existsSync(audioPath)) {
-                            fs.unlinkSync(audioPath);
-                        }
+                    } finally {
+                        const convertedMp3 = audioPath.replace(/\.ogg$/i, '.mp3');
+                        [replyPath, audioPath, convertedMp3].forEach(f => {
+                            try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch {}
+                        });
                     }
                 }
             }
@@ -1582,14 +1579,11 @@ async function processSingleMessage(msg){
 
                 } catch (err) {
                     console.error("Error while handling voice message:", err.message);
-                }finally{
-                    // Cleanup audio file
-                    if (fs.existsSync(replyPath)) {
-                        fs.unlinkSync(replyPath);
-                    }
-                    if (fs.existsSync(audioPath)) {
-                        fs.unlinkSync(audioPath);
-                    }
+                } finally {
+                    const convertedMp3 = audioPath.replace(/\.ogg$/i, '.mp3');
+                    [replyPath, audioPath, convertedMp3].forEach(f => {
+                        try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch {}
+                    });
                 }
             }
         }
@@ -1616,14 +1610,14 @@ async function processSingleMessage(msg){
                 if (wasNotified === "true") {
                     console.log(`Reported to Boss of ${cleanUserPhone} Irrelevant Chats within the last X minutes. Skipping notification.`);
                 } else {
-                    let notificationMsg = `🔔 *IRRELEVANT CHATS ALERT!!!*\n\n${global.PERSON}: *${userName}*\n\nPhone: *+${cleanUserPhone}*\n\n*Conversation:*\n${historyContext}\n\nLast chat: ${userMessage}`;
-                    
+                    let notificationMsg = `🔔 *IRRELEVANT CHATS ALERT!!!*\n\n${global.PERSON}: *${userName}*\n\nWhatsApp ID: *${userPhone}*\n\n*Conversation:*\n${historyContext}\n\nLast chat: ${userMessage}`;
+
                     console.log(`BOSS PHONE: ${global.BOSS_PHONE}`);
                     await sock.sendMessage(global.BOSS_PHONE, { text: notificationMsg });
 
                     // Sends notifications to all assistant boss as well
                     for (let phone of global.ASST_BOSS_PHONE){
-                        await sock.sendMessage(`${phone}@s.whatsapp.net`, { text: notificationMsg });
+                        await sock.sendMessage(phone + (phone.length <= 12 ? '@s.whatsapp.net' : '@lid'), { text: notificationMsg });
                     }
 
                     runHelperCommand("updateNotificationTimestamp", cleanUserPhone, userName, global.ABUSE_NOTIFICATION_FILE);
@@ -1676,14 +1670,14 @@ async function processSingleMessage(msg){
             if (wasNotified === "true") {
                 console.log(`Boss was notified of ${cleanUserPhone} within the last X minutes. Skipping notification.`);
             } else {
-                let notificationMsg = `🔔 *Potential Notification!*\n\n${global.PERSON}: *${userName}*\n\nPhone: *+${cleanUserPhone}*\n\n*Conversation:*\n${historyContext}\n\nLast chat: ${userMessage}`;
+                let notificationMsg = `🔔 *Potential Notification!*\n\n${global.PERSON}: *${userName}*\n\nWhatsApp ID: *${userPhone}*\n\n*Conversation:*\n${historyContext}\n\nLast chat: ${userMessage}`;
 
                 try {
                     await sock.sendMessage(global.BOSS_PHONE, { text: notificationMsg });
 
                     // Sends notifications to all assistant boss as well
                     for (let phone of global.ASST_BOSS_PHONE){
-                        await sock.sendMessage(`${phone}@s.whatsapp.net`, { text: notificationMsg });
+                        await sock.sendMessage(phone + (phone.length <= 12 ? '@s.whatsapp.net' : '@lid'), { text: notificationMsg });
                     }
 
                     runHelperCommand("updateNotificationTimestamp", cleanUserPhone, userName, global.SALES_NOTIFICATION_FILE);

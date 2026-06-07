@@ -106,19 +106,27 @@ export function PauseView({ addToast }: { addToast: AddToast }) {
 
       {/* Individual paused numbers */}
       <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-            Individually Paused Numbers
+            Individually Paused Users
           </span>
           {data.paused.length > 0 && (
             <span className="badge badge-orange">{data.paused.length}</span>
           )}
         </div>
 
+        <div style={{
+          marginBottom: 18, padding: '10px 14px',
+          background: 'var(--accent-muted)', border: '1px solid var(--accent-border)',
+          borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
+        }}>
+          <strong style={{ color: 'var(--text)' }}>How to get a WhatsApp ID:</strong> When the bot sends you a sales or abuse notification, it includes the user&apos;s WhatsApp ID. Most users will appear as a ID (e.g. <code style={{ fontSize: 12 }}>123456789012345</code>). Copy the full ID from the notification and paste it below.
+        </div>
+
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           <input
             className="input"
-            placeholder="Phone number, digits only (e.g. 60123456789)"
+            placeholder="WhatsApp ID from notification (e.g. 123456789012345)"
             value={newPhone}
             onChange={e => setNewPhone(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addPhone()}

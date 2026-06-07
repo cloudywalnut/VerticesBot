@@ -1,25 +1,24 @@
 'use client';
 import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   HomeIcon, ChatBubbleLeftRightIcon, UserCircleIcon, CircleStackIcon,
   Cog6ToothIcon, PauseIcon, PhotoIcon, SunIcon, MoonIcon,
   ChevronLeftIcon, ChevronRightIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
-import type { View, WaState } from '@/lib/types';
+import type { WaState } from '@/lib/types';
 
-const NAV_ITEMS: { id: View; label: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
-  { id: 'home',     label: 'Dashboard',    Icon: HomeIcon },
-  { id: 'chats',    label: 'Chat History', Icon: ChatBubbleLeftRightIcon },
-  { id: 'persona',  label: 'Persona',      Icon: UserCircleIcon },
-  { id: 'memory',   label: 'Memory',       Icon: CircleStackIcon },
-  { id: 'pause',    label: 'Paused Users', Icon: PauseIcon },
-  { id: 'images',   label: 'Images',       Icon: PhotoIcon },
-  { id: 'settings', label: 'Settings',     Icon: Cog6ToothIcon },
+const NAV_ITEMS: { id: string; label: string; href: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
+  { id: 'home',     label: 'Dashboard',    href: '/',         Icon: HomeIcon },
+  { id: 'chats',    label: 'Chat History', href: '/chats',    Icon: ChatBubbleLeftRightIcon },
+  { id: 'persona',  label: 'Persona',      href: '/persona',  Icon: UserCircleIcon },
+  { id: 'memory',   label: 'Memory',       href: '/memory',   Icon: CircleStackIcon },
+  { id: 'pause',    label: 'Paused Users', href: '/pause',    Icon: PauseIcon },
+  { id: 'images',   label: 'Images',       href: '/images',   Icon: PhotoIcon },
+  { id: 'settings', label: 'Settings',     href: '/settings', Icon: Cog6ToothIcon },
 ];
 
 interface SidebarProps {
-  active: View;
-  setActive: (v: View) => void;
   isDark: boolean;
   toggleTheme: () => void;
   waState: WaState;
@@ -31,9 +30,14 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  active, setActive, isDark, toggleTheme, waState,
+  isDark, toggleTheme, waState,
   collapsed, onToggleCollapse, mobileOpen, onClose, isMobile,
 }: SidebarProps) {
+  const pathname = usePathname();
+  const router   = useRouter();
+
+  const activeId = pathname === '/' ? 'home' : pathname.slice(1).split('/')[0];
+
   const isOnline = waState === 'open';
   const slim = collapsed && !isMobile;
   const width = isMobile ? 260 : (collapsed ? 60 : 220);
@@ -127,11 +131,11 @@ export function Sidebar({
 
         {/* Nav items */}
         <nav style={{ flex: 1, padding: slim ? '12px 6px' : '12px 10px', overflowY: 'auto' }}>
-          {NAV_ITEMS.map(({ id, label, Icon }) => (
+          {NAV_ITEMS.map(({ id, label, href, Icon }) => (
             <button
               key={id}
-              className={`nav-item ${active === id ? 'active' : ''}`}
-              onClick={() => { setActive(id); if (isMobile) onClose(); }}
+              className={`nav-item ${activeId === id ? 'active' : ''}`}
+              onClick={() => { router.push(href); if (isMobile) onClose(); }}
               title={slim ? label : undefined}
               style={slim ? { justifyContent: 'center', padding: 10, marginBottom: 4 } : {}}
             >

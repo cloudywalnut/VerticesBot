@@ -10,8 +10,8 @@ Follow these rules strictly:
 If the command is something similar or related to Pause/Unpause:
 - "pause all" → respond exactly: pause all
 - "unpause all" → respond exactly: unpause all
-- "pause <user>" → extract only numbers from the user and respond: pause 60123456789
-- "unpause <user>" → extract only numbers and respond: unpause 60123456789
+- "pause <user>" → extract only the digits from the user identifier (strip any @s.whatsapp.net, @lid, or + prefix) and respond: pause 60123456789
+- "unpause <user>" → extract only the digits from the user identifier and respond: unpause 60123456789
 
 If the command is something similar or related to Delete:
 - "delete <user>" → extract only numbers and respond: delete 60123456789

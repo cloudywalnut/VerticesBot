@@ -14,7 +14,7 @@ type Validator = (v: string) => string | null;
 type FieldDef = {
   key:        string;
   label:      string;
-  type?:      'text' | 'password' | 'select' | 'int' | 'float' | 'phone' | 'asst-boss';
+  type?:      'text' | 'password' | 'select' | 'int' | 'float' | 'phone' | 'asst-boss' | 'group-names';
   options?:   SelectOpt[];
   hint?:      string;
   validate?:  Validator;
@@ -22,6 +22,8 @@ type FieldDef = {
   max?:       number;
   fullWidth?: boolean;
 };
+
+type Group = { title: string; wide?: boolean; fields: FieldDef[] };
 
 // ─── Validators ───────────────────────────────────────────────────────────────
 const phoneValidator: Validator = v =>
@@ -83,7 +85,7 @@ const requiredValidator = (label: string): Validator => v =>
 const YES_NO: SelectOpt[] = [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }];
 const ON_OFF: SelectOpt[] = [{ value: 'On',  label: 'On'  }, { value: 'Off', label: 'Off' }];
 
-const GROUPS: { title: string; fields: FieldDef[] }[] = [
+const GROUPS: Group[] = [
   {
     title: 'Bot Identity',
     fields: [
@@ -97,31 +99,32 @@ const GROUPS: { title: string; fields: FieldDef[] }[] = [
     fields: [
       { key: 'INDIVIDUAL_CHATS', label: 'Allow Individual Chats', type: 'select', options: YES_NO },
       { key: 'GROUP_ALLOWED',    label: 'Allow Group Chats',      type: 'select', options: YES_NO },
-      { key: 'GROUP_NAMES',      label: 'Group Names', fullWidth: true, hint: 'Comma-separated group names (case-sensitive). Only used when Group Chats is On.' },
+      { key: 'GROUP_NAMES',      label: 'Group Names', type: 'group-names', fullWidth: true, hint: 'Group names are case-sensitive. Only used when Group Chats is enabled.' },
     ],
   },
   {
     title: 'Phone Numbers',
     fields: [
-      { key: 'BOT_PHONE',       label: 'Bot Phone Number',      type: 'phone', validate: phoneValidator,  hint: 'Digits only, no + (e.g. 60123456789)' },
-      { key: 'BOSS_PHONE',      label: 'Boss Phone Number',     type: 'phone', validate: phoneValidator,  hint: 'Digits only, no +' },
-      { key: 'ASST_BOSS_PHONE', label: 'Assistant Boss Phones', type: 'asst-boss', fullWidth: true,       hint: 'Digits only, no +. Press Enter or Add to include a number.' },
+      { key: 'BOT_PHONE',       label: 'Bot WhatsApp ID',            type: 'phone', validate: phoneValidator,  hint: 'Digits only' },
+      { key: 'BOSS_PHONE',      label: 'Boss WhatsApp ID',           type: 'phone', validate: phoneValidator,  hint: 'Digits only' },
+      { key: 'ASST_BOSS_PHONE', label: 'Assistant Boss WhatsApp IDs', type: 'asst-boss', fullWidth: true,      hint: 'Digits only. Press Enter or Add.' },
     ],
   },
   {
     title: 'AI Engine',
+    wide: true,
     fields: [
-      { key: 'deepseekApi',        label: 'DeepSeek API Key',   type: 'password' },
       { key: 'openaiApi',          label: 'OpenAI API Key',     type: 'password' },
+      { key: 'deepseekApi',        label: 'DeepSeek API Key',   type: 'password' },
       { key: 'qwenApi',            label: 'Qwen API Key',       type: 'password' },
       { key: 'antApi',             label: 'Anthropic API Key',  type: 'password' },
       { key: 'localApi',           label: 'Local API Endpoint', validate: httpUrlValidator, hint: 'e.g. http://localhost:11434/v1/chat/completions' },
       {
         key: 'AUTO_ENGINE_CHOICE', label: 'Default AI Engine', type: 'select',
-        hint: 'Engine auto-selected at startup when no manual choice is made',
+        hint: 'OpenAI is recommended — it is the only engine with full support for voice transcription, image vision, RAG embeddings, and PDF summarization.',
         options: [
-          { value: '1', label: '1 — DeepSeek' },
-          { value: '2', label: '2 — OpenAI' },
+          { value: '1', label: '1 — OpenAI (Recommended — full feature support)' },
+          { value: '2', label: '2 — DeepSeek' },
           { value: '3', label: '3 — Qwen' },
           { value: '4', label: '4 — Anthropic' },
           { value: '5', label: '5 — Local' },
@@ -171,23 +174,27 @@ const ALL_FIELDS = GROUPS.flatMap(g => g.fields);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function SettingsView({ addToast }: { addToast: AddToast }) {
-  const [settings, setSettings]         = useState<Record<string, string>>({});
-  const [loading, setLoading]           = useState(true);
-  const [saving, setSaving]             = useState(false);
-  const [showPw, setShowPw]             = useState<Record<string, boolean>>({});
-  const [openGroups, setOpenGroups]     = useState<Record<string, boolean>>({ 'Bot Identity': true, 'Phone Numbers': true });
-  const [errors, setErrors]             = useState<Record<string, string>>({});
-  const [asstPhones, setAsstPhones]     = useState<string[]>([]);
-  const [asstInput, setAsstInput]       = useState('');
-  const [asstInputErr, setAsstInputErr] = useState('');
+  const [settings, setSettings]           = useState<Record<string, string>>({});
+  const [loading, setLoading]             = useState(true);
+  const [saving, setSaving]               = useState(false);
+  const [showPw, setShowPw]               = useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups]       = useState<Record<string, boolean>>({ 'Bot Identity': true, 'Phone Numbers': true });
+  const [errors, setErrors]               = useState<Record<string, string>>({});
+  const [asstPhones, setAsstPhones]       = useState<string[]>([]);
+  const [asstInput, setAsstInput]         = useState('');
+  const [asstInputErr, setAsstInputErr]   = useState('');
+  const [groupNames, setGroupNames]       = useState<string[]>([]);
+  const [groupInput, setGroupInput]       = useState('');
+  const [groupInputErr, setGroupInputErr] = useState('');
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
       const loaded: Record<string, string> = d.settings || {};
       setSettings(loaded);
-      // Parse comma-separated ASST_BOSS_PHONE into array
-      const raw = loaded['ASST_BOSS_PHONE'] || '';
-      setAsstPhones(raw.split(',').map(s => s.trim()).filter(s => /^\d{10,15}$/.test(s)));
+      const rawAsst = loaded['ASST_BOSS_PHONE'] || '';
+      setAsstPhones(rawAsst.split(',').map(s => s.trim()).filter(s => /^\d{10,15}$/.test(s)));
+      const rawGroups = loaded['GROUP_NAMES'] || '';
+      setGroupNames(rawGroups.split(',').map(s => s.trim()).filter(Boolean));
       setLoading(false);
     });
   }, []);
@@ -223,12 +230,23 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
 
   const removeAsstPhone = (p: string) => setAsstPhones(prev => prev.filter(x => x !== p));
 
+  // ── Group Names chip management ──────────────────────────────────────────────
+  const addGroupName = () => {
+    const val = groupInput.trim();
+    if (!val) { setGroupInputErr('Group name cannot be empty'); return; }
+    if (groupNames.includes(val)) { setGroupInputErr('Already in the list'); return; }
+    setGroupNames(prev => [...prev, val]);
+    setGroupInput('');
+    setGroupInputErr('');
+  };
+
+  const removeGroupName = (g: string) => setGroupNames(prev => prev.filter(x => x !== g));
+
   // ── Save ────────────────────────────────────────────────────────────────────
   const save = async () => {
-    // Validate all fields
     const allErrors: Record<string, string> = {};
     for (const field of ALL_FIELDS) {
-      if (field.key === 'ASST_BOSS_PHONE') continue;
+      if (field.key === 'ASST_BOSS_PHONE' || field.key === 'GROUP_NAMES') continue;
       if (field.validate) {
         const err = field.validate(settings[field.key] ?? '');
         if (err) allErrors[field.key] = err;
@@ -237,7 +255,6 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
     setErrors(allErrors);
 
     if (Object.keys(allErrors).length > 0) {
-      // Auto-open groups that contain errors
       const errGroups = new Set(
         GROUPS.filter(g => g.fields.some(f => allErrors[f.key])).map(g => g.title)
       );
@@ -251,7 +268,11 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
     }
 
     setSaving(true);
-    const updates = { ...settings, ASST_BOSS_PHONE: asstPhones.join(',') };
+    const updates = {
+      ...settings,
+      ASST_BOSS_PHONE: asstPhones.join(','),
+      GROUP_NAMES:     groupNames.join(','),
+    };
     const r = await fetch('/api/settings', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -330,7 +351,7 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
                 <div style={{
                   padding: 20,
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gridTemplateColumns: `repeat(auto-fit, minmax(${group.wide ? '300px' : '240px'}, 1fr))`,
                   gap: '16px 20px',
                 }}>
                   {group.fields.map(field => (
@@ -342,13 +363,18 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
                       showPw={!!showPw[field.key]}
                       onTogglePw={() => setShowPw(prev => ({ ...prev, [field.key]: !prev[field.key] }))}
                       onChange={v => setField(field.key, v)}
-                      // ASST_BOSS_PHONE props
                       asstPhones={asstPhones}
                       asstInput={asstInput}
                       asstInputErr={asstInputErr}
                       onAsstInputChange={v => { setAsstInput(v); setAsstInputErr(''); }}
                       onAsstAdd={addAsstPhone}
                       onAsstRemove={removeAsstPhone}
+                      groupNames={groupNames}
+                      groupInput={groupInput}
+                      groupInputErr={groupInputErr}
+                      onGroupInputChange={v => { setGroupInput(v); setGroupInputErr(''); }}
+                      onGroupAdd={addGroupName}
+                      onGroupRemove={removeGroupName}
                     />
                   ))}
                 </div>
@@ -372,23 +398,30 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
 
 // ─── Field Input Subcomponent ─────────────────────────────────────────────────
 type FieldInputProps = {
-  field:            FieldDef;
-  value:            string;
-  error?:           string;
-  showPw:           boolean;
-  onTogglePw:       () => void;
-  onChange:         (v: string) => void;
-  asstPhones:       string[];
-  asstInput:        string;
-  asstInputErr:     string;
-  onAsstInputChange:(v: string) => void;
-  onAsstAdd:        () => void;
-  onAsstRemove:     (p: string) => void;
+  field:              FieldDef;
+  value:              string;
+  error?:             string;
+  showPw:             boolean;
+  onTogglePw:         () => void;
+  onChange:           (v: string) => void;
+  asstPhones:         string[];
+  asstInput:          string;
+  asstInputErr:       string;
+  onAsstInputChange:  (v: string) => void;
+  onAsstAdd:          () => void;
+  onAsstRemove:       (p: string) => void;
+  groupNames:         string[];
+  groupInput:         string;
+  groupInputErr:      string;
+  onGroupInputChange: (v: string) => void;
+  onGroupAdd:         () => void;
+  onGroupRemove:      (g: string) => void;
 };
 
 function FieldInput({
   field, value, error, showPw, onTogglePw, onChange,
   asstPhones, asstInput, asstInputErr, onAsstInputChange, onAsstAdd, onAsstRemove,
+  groupNames, groupInput, groupInputErr, onGroupInputChange, onGroupAdd, onGroupRemove,
 }: FieldInputProps) {
   const inputErrStyle: CSSProperties = error
     ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.12)' }
@@ -461,6 +494,74 @@ function FieldInput({
           <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{asstInputErr}</div>
         )}
         {!asstInputErr && field.hint && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>{field.hint}</div>
+        )}
+      </div>
+    );
+  }
+
+  // ── GROUP_NAMES chip input ─────────────────────────────────────────────────
+  if (field.type === 'group-names') {
+    return (
+      <div style={containerStyle}>
+        <label className="label">{field.label}</label>
+
+        {groupNames.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {groupNames.map(g => (
+              <span key={g} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: 'var(--accent-muted)', color: 'var(--accent)',
+                border: '1px solid var(--accent-border)', borderRadius: 7,
+                padding: '4px 10px', fontSize: 13, fontWeight: 500,
+              }}>
+                {g}
+                <button
+                  onClick={() => onGroupRemove(g)}
+                  title="Remove"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: 0, display: 'flex', alignItems: 'center',
+                    color: 'var(--accent)', opacity: 0.7,
+                  }}
+                >
+                  <XMarkIcon style={{ width: 13, height: 13 }} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {groupNames.length === 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+            No groups added yet
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            className="input"
+            type="text"
+            value={groupInput}
+            onChange={e => onGroupInputChange(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); onGroupAdd(); } }}
+            placeholder="Group name (case-sensitive)"
+            style={groupInputErr ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.12)', flex: 1 } : { flex: 1 }}
+          />
+          <button
+            className="btn-secondary"
+            onClick={onGroupAdd}
+            style={{ padding: '9px 14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <PlusIcon style={{ width: 13, height: 13 }} />
+            Add
+          </button>
+        </div>
+
+        {groupInputErr && (
+          <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{groupInputErr}</div>
+        )}
+        {!groupInputErr && field.hint && (
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>{field.hint}</div>
         )}
       </div>

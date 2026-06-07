@@ -48,6 +48,7 @@ userdata/qr/
 userdata/chathistory/
 userdata/mem/
 userdata/img/
+userdata/voice/
 
 # Runtime JSON state - auto-created on startup
 userdata/json/bot.log

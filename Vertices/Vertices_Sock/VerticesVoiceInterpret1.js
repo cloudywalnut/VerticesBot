@@ -35,6 +35,7 @@ async function VoiceInterpret(oggFilePath) {
                 fs.unlink(mp3Path, () => {});
                 resolve(response.data.text);
             } catch (err) {
+                try { fs.unlinkSync(mp3Path); } catch {}
                 reject(err);
             }
         });

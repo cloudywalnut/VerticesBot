@@ -172,7 +172,7 @@ export function ChatsView({ addToast, isMobile }: { addToast: AddToast; isMobile
                 height: '100%', flexDirection: 'column', gap: 12, color: 'var(--text-muted)',
               }}>
                 <ChatBubbleLeftRightIcon style={{ width: 48, height: 48, opacity: 0.3 }} />
-                <p style={{ fontSize: 14, margin: 0 }}>Select a conversation to view</p>
+                <p style={{ fontSize: 14, margin: 0 }}>Select a conversation to View</p>
               </div>
             ) : loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>

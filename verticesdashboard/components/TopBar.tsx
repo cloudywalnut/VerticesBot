@@ -1,8 +1,9 @@
 'use client';
+import { usePathname } from 'next/navigation';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import type { View, WaState } from '@/lib/types';
 
-const TITLES: Record<View, string> = {
+const TITLES: Record<string, string> = {
   home:     'Dashboard',
   chats:    'Chat History',
   persona:  'Persona',
@@ -13,13 +14,14 @@ const TITLES: Record<View, string> = {
 };
 
 interface TopBarProps {
-  activeView: View;
   waState: WaState;
   onMenuClick: () => void;
   isMobile: boolean;
 }
 
-export function TopBar({ activeView, waState, onMenuClick, isMobile }: TopBarProps) {
+export function TopBar({ waState, onMenuClick, isMobile }: TopBarProps) {
+  const pathname = usePathname();
+  const view     = (pathname === '/' ? 'home' : pathname.slice(1).split('/')[0]) as View;
   const isOnline = waState === 'open';
 
   return (
@@ -40,7 +42,7 @@ export function TopBar({ activeView, waState, onMenuClick, isMobile }: TopBarPro
       )}
 
       <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-        {TITLES[activeView]}
+        {TITLES[view] ?? 'Dashboard'}
       </span>
 
       <div style={{ marginLeft: 'auto' }}>
