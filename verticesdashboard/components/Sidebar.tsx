@@ -4,7 +4,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   HomeIcon, ChatBubbleLeftRightIcon, UserCircleIcon, CircleStackIcon,
   Cog6ToothIcon, PauseIcon, PhotoIcon, SunIcon, MoonIcon,
-  ChevronLeftIcon, ChevronRightIcon, XMarkIcon,
+  ChevronLeftIcon, ChevronRightIcon, XMarkIcon, BeakerIcon,
+  ArrowRightStartOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import type { WaState } from '@/lib/types';
 
@@ -15,8 +16,11 @@ const NAV_ITEMS: { id: string; label: string; href: string; Icon: React.Componen
   { id: 'memory',   label: 'Memory',       href: '/memory',   Icon: CircleStackIcon },
   { id: 'pause',    label: 'Paused Users', href: '/pause',    Icon: PauseIcon },
   { id: 'images',   label: 'Images',       href: '/images',   Icon: PhotoIcon },
+  { id: 'test-chat', label: 'Test Chat',    href: '/test-chat', Icon: BeakerIcon },
   { id: 'settings', label: 'Settings',     href: '/settings', Icon: Cog6ToothIcon },
 ];
+
+const ACCENT_PRESETS = ['#F13223', '#2563EB', '#16A34A', '#7C3AED', '#EA580C', '#0891B2'];
 
 interface SidebarProps {
   isDark: boolean;
@@ -27,14 +31,23 @@ interface SidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
   isMobile: boolean;
+  accentColor: string;
+  onAccentChange: (hex: string) => void;
 }
 
 export function Sidebar({
   isDark, toggleTheme, waState,
   collapsed, onToggleCollapse, mobileOpen, onClose, isMobile,
+  accentColor, onAccentChange,
 }: SidebarProps) {
   const pathname = usePathname();
   const router   = useRouter();
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  }
 
   const activeId = pathname === '/' ? 'home' : pathname.slice(1).split('/')[0];
 
@@ -84,7 +97,7 @@ export function Sidebar({
                 <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                   Vertices.AI
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>Admin Panel</div>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>Admin Panel</div>
               </div>
             </div>
           )}
@@ -145,8 +158,48 @@ export function Sidebar({
           ))}
         </nav>
 
+        {/* Accent color picker */}
+        <div style={{ padding: slim ? '10px 6px' : '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {slim ? (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 14, height: 14, borderRadius: '50%', background: accentColor, border: '2px solid rgba(255,255,255,0.25)' }} />
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+                Brand Color
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                {ACCENT_PRESETS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => onAccentChange(color)}
+                    title={color}
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%', padding: 0,
+                      background: color, border: 'none', cursor: 'pointer', flexShrink: 0,
+                      outline: accentColor.toLowerCase() === color.toLowerCase() ? '2px solid white' : '2px solid transparent',
+                      outlineOffset: 2,
+                      transition: 'outline 0.15s',
+                    }}
+                  />
+                ))}
+                <label title="Custom color" style={{ width: 18, height: 18, borderRadius: '50%', cursor: 'pointer', flexShrink: 0, border: '1.5px dashed rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', lineHeight: 1 }}>+</span>
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={e => onAccentChange(e.target.value)}
+                    style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                  />
+                </label>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Theme toggle */}
-        <div style={{ padding: slim ? '12px 6px' : '12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: slim ? '5px 0px' : '5px 0px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             className="nav-item"
             onClick={toggleTheme}
@@ -157,6 +210,19 @@ export function Sidebar({
               ? <SunIcon style={{ width: 18, height: 18 }} />
               : <MoonIcon style={{ width: 18, height: 18 }} />}
             {!slim && (isDark ? 'Light Mode' : 'Dark Mode')}
+          </button>
+        </div>
+
+        {/* Logout */}
+        <div style={{ padding: slim ? '5px 0px' : '5px 0px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            className="nav-item"
+            onClick={handleLogout}
+            title={slim ? 'Sign out' : undefined}
+            style={{ width: '100%', color: 'rgba(255,100,100,0.75)', ...(slim ? { justifyContent: 'center', padding: 10 } : {}) }}
+          >
+            <ArrowRightStartOnRectangleIcon style={{ width: 18, height: 18 }} />
+            {!slim && 'Sign out'}
           </button>
         </div>
       </aside>

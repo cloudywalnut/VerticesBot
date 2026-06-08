@@ -3,6 +3,7 @@ import { useState, useEffect, KeyboardEvent, CSSProperties } from 'react';
 import {
   ArrowPathIcon, CheckIcon, EyeIcon, EyeSlashIcon,
   ChevronDownIcon, ChevronRightIcon, XMarkIcon, PlusIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '@/components/PageHeader';
 import type { AddToast } from '@/lib/types';
@@ -384,7 +385,7 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
         })}
       </div>
 
-      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-start' }}>
         <button className="btn-primary" onClick={save} disabled={saving}>
           {saving
             ? <ArrowPathIcon style={{ width: 15, height: 15 }} />
@@ -392,6 +393,192 @@ export function SettingsView({ addToast }: { addToast: AddToast }) {
           {saving ? 'Saving…' : 'Save All Settings'}
         </button>
       </div>
+
+      <CredentialsSection addToast={addToast} />
+    </div>
+  );
+}
+
+// ─── Credentials Section ──────────────────────────────────────────────────────
+function CredentialsSection({ addToast }: { addToast: AddToast }) {
+  const [open, setOpen]           = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [newUser, setNewUser]     = useState('');
+  const [confUser, setConfUser]   = useState('');
+  const [newPass, setNewPass]     = useState('');
+  const [confPass, setConfPass]   = useState('');
+  const [showNew, setShowNew]     = useState(false);
+  const [showConf, setShowConf]   = useState(false);
+  const [errors, setErrors]       = useState<Record<string, string>>({});
+
+  function validate() {
+    const e: Record<string, string> = {};
+    const changingUser = newUser.trim() || confUser.trim();
+    const changingPass = newPass || confPass;
+
+    if (!changingUser && !changingPass) {
+      e._form = 'Enter a new username, a new password, or both.';
+      return e;
+    }
+
+    if (changingUser) {
+      if (!newUser.trim())   e.newUser  = 'Username cannot be empty';
+      if (!confUser.trim())  e.confUser = 'Please confirm the username';
+      if (newUser.trim() && confUser.trim() && newUser.trim() !== confUser.trim())
+        e.confUser = 'Usernames do not match';
+    }
+
+    if (changingPass) {
+      if (!newPass)          e.newPass  = 'Password cannot be empty';
+      if (!confPass)         e.confPass = 'Please confirm the password';
+      if (newPass && confPass && newPass !== confPass)
+        e.confPass = 'Passwords do not match';
+    }
+
+    return e;
+  }
+
+  async function handleSave() {
+    const e = validate();
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setSaving(true);
+    const updates: Record<string, string> = {};
+    if (newUser.trim()) updates.WEBDASHBOARD_USERNAME = newUser.trim();
+    if (newPass)        updates.WEBDASHBOARD_PASSWORD = newPass;
+
+    const r = await fetch('/api/settings', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ updates }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      addToast('Login credentials updated', 'success');
+      setNewUser(''); setConfUser(''); setNewPass(''); setConfPass('');
+    } else {
+      addToast(d.error || 'Save failed', 'error');
+    }
+    setSaving(false);
+  }
+
+  const inputStyle = (err?: string): CSSProperties => err
+    ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.12)' }
+    : {};
+
+  return (
+    <div className="card" style={{ overflow: 'hidden', marginTop: 16 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer',
+          borderBottom: open ? '1px solid var(--border)' : 'none',
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <LockClosedIcon style={{ width: 15, height: 15, color: 'var(--text-muted)' }} />
+          <span style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--text)' }}>Dashboard Credentials</span>
+        </span>
+        {open
+          ? <ChevronDownIcon  style={{ width: 16, height: 16, color: 'var(--text-muted)' }} />
+          : <ChevronRightIcon style={{ width: 16, height: 16, color: 'var(--text-muted)' }} />}
+      </button>
+
+      {open && (
+        <div style={{ padding: 20 }}>
+          {errors._form && (
+            <div style={{
+              marginBottom: 16, padding: '10px 14px',
+              background: 'var(--danger-muted)', border: '1px solid var(--danger-border)',
+              borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--danger-text)',
+            }}>
+              {errors._form}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px 20px' }}>
+            {/* Username */}
+            <div>
+              <label className="label">New Username</label>
+              <input
+                className="input"
+                type="text"
+                value={newUser}
+                autoComplete="off"
+                onChange={e => { setNewUser(e.target.value); setErrors(p => { const n = {...p}; delete n.newUser; delete n._form; return n; }); }}
+                placeholder="Leave blank to keep current"
+                style={inputStyle(errors.newUser)}
+              />
+              {errors.newUser && <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{errors.newUser}</div>}
+            </div>
+
+            <div>
+              <label className="label">Confirm New Username</label>
+              <input
+                className="input"
+                type="text"
+                value={confUser}
+                autoComplete="off"
+                onChange={e => { setConfUser(e.target.value); setErrors(p => { const n = {...p}; delete n.confUser; delete n._form; return n; }); }}
+                placeholder="Repeat the new username"
+                style={inputStyle(errors.confUser)}
+              />
+              {errors.confUser && <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{errors.confUser}</div>}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="label">New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="input"
+                  type={showNew ? 'text' : 'password'}
+                  value={newPass}
+                  autoComplete="new-password"
+                  onChange={e => { setNewPass(e.target.value); setErrors(p => { const n = {...p}; delete n.newPass; delete n._form; return n; }); }}
+                  placeholder="Leave blank to keep current"
+                  style={{ paddingRight: 36, ...inputStyle(errors.newPass) }}
+                />
+                <button onClick={() => setShowNew(v => !v)} tabIndex={-1} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
+                  {showNew ? <EyeSlashIcon style={{ width: 15, height: 15 }} /> : <EyeIcon style={{ width: 15, height: 15 }} />}
+                </button>
+              </div>
+              {errors.newPass && <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{errors.newPass}</div>}
+            </div>
+
+            <div>
+              <label className="label">Confirm New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="input"
+                  type={showConf ? 'text' : 'password'}
+                  value={confPass}
+                  autoComplete="new-password"
+                  onChange={e => { setConfPass(e.target.value); setErrors(p => { const n = {...p}; delete n.confPass; delete n._form; return n; }); }}
+                  placeholder="Repeat the new password"
+                  style={{ paddingRight: 36, ...inputStyle(errors.confPass) }}
+                />
+                <button onClick={() => setShowConf(v => !v)} tabIndex={-1} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
+                  {showConf ? <EyeSlashIcon style={{ width: 15, height: 15 }} /> : <EyeIcon style={{ width: 15, height: 15 }} />}
+                </button>
+              </div>
+              {errors.confPass && <div style={{ fontSize: 11.5, color: 'var(--danger-text)', marginTop: 4 }}>{errors.confPass}</div>}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn-primary" onClick={handleSave} disabled={saving}>
+              {saving
+                ? <ArrowPathIcon style={{ width: 15, height: 15 }} />
+                : <LockClosedIcon style={{ width: 15, height: 15 }} />}
+              {saving ? 'Saving…' : 'Update Credentials'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

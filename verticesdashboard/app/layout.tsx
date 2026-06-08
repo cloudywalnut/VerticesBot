@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
-import { DashboardShell } from '@/components/DashboardShell';
 import './globals.css';
 
 const outfit = Outfit({
@@ -20,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <body className="min-h-full">
-        <DashboardShell>{children}</DashboardShell>
+        {children}
       </body>
     </html>
   );

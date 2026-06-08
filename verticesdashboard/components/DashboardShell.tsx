@@ -7,8 +7,30 @@ import { useIsMobile }    from '@/hooks/useIsMobile';
 import { DashboardContext } from '@/lib/DashboardContext';
 import type { WaState, Toast } from '@/lib/types';
 
+// ── Accent color helpers ──────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function darkenHex(hex: string, amount = 0.12): string {
+  return '#' + hexToRgb(hex)
+    .map(v => Math.max(0, Math.round(v * (1 - amount))).toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function applyAccent(hex: string) {
+  const [r, g, b] = hexToRgb(hex);
+  const root = document.documentElement;
+  root.style.setProperty('--accent',       hex);
+  root.style.setProperty('--accent-rgb',   `${r}, ${g}, ${b}`);
+  root.style.setProperty('--accent-hover', darkenHex(hex));
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark]                       = useState(false);
+  const [accentColor, setAccentColor]             = useState('#F13223');
   const [waState, setWaState]                     = useState<WaState>(null);
   const [toasts, setToasts]                       = useState<Toast[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed]   = useState(false);
@@ -22,6 +44,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       setIsDark(true);
       document.documentElement.classList.add('dark');
     }
+
+    // Load accent color from settings
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(d => {
+        const color = d.settings?.ACCENT_COLOR;
+        if (color) { applyAccent(color); setAccentColor(color); }
+      })
+      .catch(() => {});
+  }, []);
+
+  const changeAccent = useCallback((hex: string) => {
+    applyAccent(hex);
+    setAccentColor(hex);
+    fetch('/api/settings', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ updates: { ACCENT_COLOR: hex } }),
+    }).catch(() => {});
   }, []);
 
   const toggleTheme = () => {
@@ -72,6 +113,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           mobileOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
           isMobile={isMobile}
+          accentColor={accentColor}
+          onAccentChange={changeAccent}
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-export function useIsMobile(breakpoint = 768): boolean {
+export function useIsMobile(breakpoint = 980): boolean {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < breakpoint);
