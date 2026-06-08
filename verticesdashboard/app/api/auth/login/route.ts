@@ -16,16 +16,15 @@ function parseEnv(raw: string): Record<string, string> {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: 'Server misconfigured: AUTH_SECRET missing' }, { status: 500 });
-  }
-
   const { username, password } = await req.json();
 
   const env = parseEnv(fs.readFileSync(ENV_FILE, 'utf-8'));
   const expectedUser = env.WEBDASHBOARD_USERNAME || 'admin';
   const expectedPass = env.WEBDASHBOARD_PASSWORD || 'admin';
+  const secret = env.AUTH_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: 'Server misconfigured: AUTH_SECRET missing' }, { status: 500 });
+  }
 
   if (username !== expectedUser || password !== expectedPass) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });

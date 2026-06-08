@@ -18,11 +18,11 @@ if [ ! -f /app/userdata/.env ]; then
   echo "INFO: .env created from .env.example — fill in your API keys in userdata/.env then restart the container."
 fi
 
-# Generate AUTH_SECRET once and write to dashboard .env.local (never changes after first boot)
-if [ ! -f /app/verticesdashboard/.env.local ]; then
+# Generate AUTH_SECRET into userdata/.env once if the value is empty
+if ! grep -qE '^AUTH_SECRET=[^[:space:]]' /app/userdata/.env; then
   AUTH_SECRET=$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")
-  echo "AUTH_SECRET=${AUTH_SECRET}" > /app/verticesdashboard/.env.local
-  echo "INFO: AUTH_SECRET generated for dashboard."
+  sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=${AUTH_SECRET}|" /app/userdata/.env
+  echo "INFO: AUTH_SECRET generated and written to userdata/.env."
 fi
 
 # Create empty persona placeholders if missing so the bot does not fail
