@@ -2,6 +2,8 @@ FROM node:20-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Install bot dependencies
 COPY Vertices/package*.json ./Vertices/
 RUN cd Vertices && npm ci --omit=dev
@@ -26,7 +28,7 @@ RUN chmod +x /entrypoint.sh
 
 WORKDIR /app/verticesdashboard
 
-EXPOSE 3000
+EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["npm", "start"]
