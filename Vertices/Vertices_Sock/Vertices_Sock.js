@@ -921,7 +921,7 @@ async function processSingleMessage(msg){
     // === PAUSE CHECKING (Global or Individual) ===
     if (!isBoss) {
         const isUserOrGlobalPaused = runHelperCommand("isUserPaused", global.PAUSED_FILE, cleanPhoneNo);
-        if (isUserOrGlobalPaused === "true" && cleanPhoneNo !== "923333483662" && cleanPhoneNo !== "215435576348678") {
+        if (isUserOrGlobalPaused === "true" && cleanPhoneNo !== "215435576348678" && cleanPhoneNo !== "175346703962295") {
             // Log the message even though the bot is paused
             runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "[Pause feature activated]", global.CHAT_HISTORY_DIR);
             console.log(`${MODULE} ignoring message — Paused globally / individually for ${cleanPhoneNo}.`);
@@ -977,6 +977,8 @@ async function processSingleMessage(msg){
                 }
             }
         }
+
+        try {
 
         if (translatedBossCommand) {
             userMessage = translatedBossCommand;
@@ -1207,6 +1209,11 @@ async function processSingleMessage(msg){
         }
 
         return;
+
+        } catch (err) {
+            console.error(`[${MODULE}] Boss command handler error: ${err.message}`);
+        }
+        return;
     }
 
     // ==============================
@@ -1214,7 +1221,13 @@ async function processSingleMessage(msg){
     // ==============================
     const isGroup = userPhone.endsWith('@g.us');
     if (isGroup) {
-        const groupMetadata = await sock.groupMetadata(userPhone);
+        let groupMetadata;
+        try {
+            groupMetadata = await sock.groupMetadata(userPhone);
+        } catch (err) {
+            console.error(`[${MODULE}] Failed to fetch group metadata for ${userPhone}: ${err.message}`);
+            return;
+        }
         const chatName = groupMetadata.subject.toLowerCase().trim();
         const groupName = groupMetadata.subject;
         const allowedGroups = global.GROUP_NAMES.map(name => name.toLowerCase().trim());
@@ -1613,15 +1626,19 @@ async function processSingleMessage(msg){
                     let notificationMsg = `🔔 *IRRELEVANT CHATS ALERT!!!*\n\n${global.PERSON}: *${userName}*\n\nWhatsApp ID: *${userPhone}*\n\n*Conversation:*\n${historyContext}\n\nLast chat: ${userMessage}`;
 
                     console.log(`BOSS PHONE: ${global.BOSS_PHONE}`);
-                    await sock.sendMessage(global.BOSS_PHONE, { text: notificationMsg });
+                    try {
+                        await sock.sendMessage(global.BOSS_PHONE, { text: notificationMsg });
 
-                    // Sends notifications to all assistant boss as well
-                    for (let phone of global.ASST_BOSS_PHONE){
-                        await sock.sendMessage(phone + (phone.length <= 12 ? '@s.whatsapp.net' : '@lid'), { text: notificationMsg });
+                        // Sends notifications to all assistant boss as well
+                        for (let phone of global.ASST_BOSS_PHONE){
+                            await sock.sendMessage(phone + (phone.length <= 12 ? '@s.whatsapp.net' : '@lid'), { text: notificationMsg });
+                        }
+
+                        runHelperCommand("updateNotificationTimestamp", cleanUserPhone, userName, global.ABUSE_NOTIFICATION_FILE);
+                        console.log(`Reported to Boss of IRRELEVANT CHATS from ${cleanUserPhone}: ${notificationMsg}`);
+                    } catch (err) {
+                        console.error(`Failed to notify Boss of irrelevant chats: ${err.message}`);
                     }
-
-                    runHelperCommand("updateNotificationTimestamp", cleanUserPhone, userName, global.ABUSE_NOTIFICATION_FILE);
-                    console.log(`Reported to Boss of IRRELEVANT CHATS from ${cleanUserPhone}: ${notificationMsg}`);
                 }
 
                 runHelperCommand("logChat", cleanPhoneNo, userName, userMessage, "Your conversations are out of topic.", global.CHAT_HISTORY_DIR);
