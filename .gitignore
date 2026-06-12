@@ -50,6 +50,12 @@ userdata/mem/
 userdata/img/
 userdata/voice/
 
+# Persona files - user-specific, auto-created on startup
+userdata/persona/verticespersona-long.txt
+userdata/persona/verticespersona-short.txt
+userdata/persona/verticespersona-boss.txt
+userdata/persona/verticespersona-group.txt
+
 # Runtime JSON state - auto-created on startup
 userdata/json/bot.log
 userdata/json/bot-pid.json

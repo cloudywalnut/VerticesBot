@@ -82,12 +82,6 @@ function runDynamicCode(rawCode) {
     });
 
     try {
-        const histDir = path.join(__dirname, '..', '..', 'userdata', 'chathistory');
-        if (!fs.existsSync(histDir)) {
-            fs.mkdirSync(histDir);
-            console.log(`[${MODULE}] Created missing 'chathistory' directory.`);
-        }
-
         try {
             const result = vm.run(wrapped, 'reportcoder.js');
             if (result === undefined)              return "No result returned from code.";

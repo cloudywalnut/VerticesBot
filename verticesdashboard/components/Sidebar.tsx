@@ -11,11 +11,11 @@ import type { WaState } from '@/lib/types';
 
 const NAV_ITEMS: { id: string; label: string; href: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
   { id: 'home',     label: 'Dashboard',    href: '/',         Icon: HomeIcon },
-  { id: 'chats',    label: 'Chat History', href: '/chats',    Icon: ChatBubbleLeftRightIcon },
   { id: 'persona',  label: 'Persona',      href: '/persona',  Icon: UserCircleIcon },
-  { id: 'memory',   label: 'Memory',       href: '/memory',   Icon: CircleStackIcon },
-  { id: 'pause',    label: 'Paused Users', href: '/pause',    Icon: PauseIcon },
   { id: 'images',   label: 'Images',       href: '/images',   Icon: PhotoIcon },
+  { id: 'memory',   label: 'Memory',       href: '/memory',   Icon: CircleStackIcon },
+  { id: 'chats',    label: 'Chat History', href: '/chats',    Icon: ChatBubbleLeftRightIcon },
+  { id: 'pause',    label: 'Paused Users', href: '/pause',    Icon: PauseIcon },
   { id: 'test-chat', label: 'Test Chat',    href: '/test-chat', Icon: BeakerIcon },
   { id: 'settings', label: 'Settings',     href: '/settings', Icon: Cog6ToothIcon },
 ];

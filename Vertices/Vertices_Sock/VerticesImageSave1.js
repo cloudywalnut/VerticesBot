@@ -6,7 +6,6 @@ const { downloadBaileysMedia } = require('./VerticesMedia1.js');
 const MODULE = path.basename(__filename, path.extname(__filename));
 
 const ROOT_IMG_FOLDER = path.join(__dirname, '..', '..', "userdata", "img");
-fs.mkdirSync(ROOT_IMG_FOLDER, { recursive: true });
 
 const MAX_IMAGES     = 8;
 const SESSION_TIMEOUT = 80000;

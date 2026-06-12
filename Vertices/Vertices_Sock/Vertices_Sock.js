@@ -322,7 +322,11 @@ function reloadIfNeeded() {
 // ==============================
 // FILE SYSTEM SETUP
 // ==============================
-if (!fs.existsSync(global.CHAT_HISTORY_DIR)) fs.mkdirSync(global.CHAT_HISTORY_DIR);
+const USERDATA_DIR = path.resolve(__dirname, '..', '..', 'userdata');
+['json', 'qr', 'mem', 'persona', 'chathistory', 'voice', 'img'].forEach(d =>
+    fs.mkdirSync(path.join(USERDATA_DIR, d), { recursive: true })
+);
+
 if (!fs.existsSync(global.SALES_NOTIFICATION_FILE)) fs.writeFileSync(global.SALES_NOTIFICATION_FILE, JSON.stringify({ users: {} }, null, 2));
 if (!fs.existsSync(global.ABUSE_NOTIFICATION_FILE)) fs.writeFileSync(global.ABUSE_NOTIFICATION_FILE, JSON.stringify({ users: {} }, null, 2));
 const defaultData = { paused: [], global: false };
@@ -352,7 +356,6 @@ async function start() {
             fs.writeFileSync(WA_STATUS_FILE, JSON.stringify({ state: 'qr' }));
 
             try {
-                fs.mkdirSync(QR_DIR, { recursive: true });
                 qrcodeImage.toFile(QR_FILE, qr, { width: 300, margin: 2 })
                     .then(() => console.log('QR saved to:', QR_FILE))
                     .catch(err => {
@@ -954,7 +957,6 @@ async function processSingleMessage(msg){
                 let audioPath = path.join(voiceDir, `user_audio_${userId}_${ts}.${bossMedia.mimetype.includes('ogg') ? 'ogg' : 'mp3'}`);
 
                 try {
-                    fs.mkdirSync(voiceDir, { recursive: true });
                     fs.writeFileSync(audioPath, audioBuffer);
                     console.log(`[${MODULE}] Boss audio saved: ${audioPath}`);
 
@@ -1285,11 +1287,6 @@ async function processSingleMessage(msg){
                         const audioBuffer = Buffer.from(media.data, 'base64');
                         audioPath = path.join(voiceDir, `user_audio_${userId}_${ts}.${media.mimetype.includes('ogg') ? 'ogg' : 'mp3'}`);
                         
-                        // Ensure directory exists
-                        if (!fs.existsSync(voiceDir)) {
-                            fs.mkdirSync(voiceDir, { recursive: true });
-                        }
-                        
                         // Save file
                         fs.writeFileSync(audioPath, audioBuffer);
                         console.log(`Audio file saved: ${audioPath}`);
@@ -1538,11 +1535,6 @@ async function processSingleMessage(msg){
                     // Save the audio file
                     const audioBuffer = Buffer.from(media.data, 'base64');
                     audioPath = path.join(voiceDir, `user_audio_${userId}_${ts}.${media.mimetype.includes('ogg') ? 'ogg' : 'mp3'}`);
-                    
-                    // Ensure directory exists
-                    if (!fs.existsSync(voiceDir)) {
-                        fs.mkdirSync(voiceDir, { recursive: true });
-                    }
                     
                     // Save file
                     fs.writeFileSync(audioPath, audioBuffer);

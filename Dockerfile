@@ -19,10 +19,6 @@ COPY verticesdashboard/ ./verticesdashboard/
 # Build dashboard
 RUN cd verticesdashboard && npm run build
 
-# Pre-create userdata subdirs so the volume mount works cleanly
-RUN mkdir -p userdata/json userdata/qr userdata/persona userdata/mem \
-    userdata/chathistory userdata/img userdata/whatsapp
-
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

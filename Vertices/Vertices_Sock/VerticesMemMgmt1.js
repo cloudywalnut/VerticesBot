@@ -17,7 +17,6 @@ function readFile(file) {
 
 function writeFile(file, content) {
     try {
-        fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, content, 'utf-8');
     } catch (err) {
         console.error('[VerticesMemMgmt1] Failed to write file:', err.message);

@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '@/components/PageHeader';
 import type { AddToast } from '@/lib/types';
+import { TIMEZONES, LOCALE_FORMATS, WHISPER_LANGUAGES } from '@/lib/settingsOptions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SelectOpt = { value: string; label: string };
@@ -58,18 +59,6 @@ const posIntMinValidator = (minVal: number): Validator => v => {
   if (!v.trim()) return null;
   const n = Number(v);
   if (!Number.isInteger(n) || n < minVal) return `Whole number ≥ ${minVal}`;
-  return null;
-};
-
-const localeValidator: Validator = v => {
-  if (!v.trim()) return null;
-  if (!/^[a-z]{2,3}-[A-Z]{2,3}$/.test(v.trim())) return 'Format: en-US, ms-MY, zh-CN';
-  return null;
-};
-
-const langCodeValidator: Validator = v => {
-  if (!v.trim()) return null;
-  if (!/^[a-z]{2,3}$/.test(v.trim())) return 'Language code: en, ms, zh, ar …';
   return null;
 };
 
@@ -137,7 +126,7 @@ const GROUPS: Group[] = [
     title: 'Voice Settings',
     fields: [
       { key: 'USEVOICE',            label: 'Enable Voice Replies',       type: 'select', options: YES_NO },
-      { key: 'VOICELANGUAGE',       label: 'Voice Language',             validate: langCodeValidator,           hint: 'ISO 639 code: en, ms, zh, ar …' },
+      { key: 'VOICELANGUAGE',       label: 'Voice Language',             type: 'select', options: WHISPER_LANGUAGES },
       { key: 'VOICE_API_KEY',       label: 'ElevenLabs API Key',         type: 'password' },
       { key: 'VOICE_MODEL_ID',      label: 'Voice Model ID',             hint: 'e.g. eleven_turbo_v2_5, eleven_multilingual_v2' },
       { key: 'VOICE_ID',            label: 'Voice Profile ID',           hint: 'Leave blank for default (Rachel)' },
@@ -162,8 +151,8 @@ const GROUPS: Group[] = [
     fields: [
       { key: 'HISTORY_SHORT',  label: 'Short History Size', type: 'int', min: 2,    validate: evenIntValidator(2),         hint: 'Even number (e.g. 4, 6)' },
       { key: 'HISTORY_LONG',   label: 'Long History Size',  type: 'int', min: 2,    validate: evenIntValidator(2),         hint: 'Even number, greater than Short' },
-      { key: 'localFormat',    label: 'Language Format',                            validate: localeValidator,             hint: 'e.g. en-US, ms-MY' },
-      { key: 'TimeZone',       label: 'Timezone',                                                                          hint: 'e.g. Asia/Kuala_Lumpur, UTC' },
+      { key: 'localFormat',    label: 'Local Format',  type: 'select', options: LOCALE_FORMATS },
+      { key: 'TimeZone',       label: 'Timezone',         type: 'select', options: TIMEZONES },
       { key: 'LLM_TIMEOUT_MS', label: 'AI Timeout (ms)',    type: 'int', min: 1000, validate: posIntMinValidator(1000),    hint: 'Default 120000 (2 min)' },
       { key: 'RAG',            label: 'RAG (Vector DB)',    type: 'select', options: ON_OFF },
       { key: 'MARKETSCANNER',  label: 'Market Scanner',     type: 'select', options: ON_OFF },

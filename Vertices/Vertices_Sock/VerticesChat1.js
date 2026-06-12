@@ -11,9 +11,9 @@ function formatTimestamp(ts) {
 
 // === PERSONA ===
 function loadPersona(longFile, shortFile, groupFile, coderFile, bossFile) {
-    if (![longFile, shortFile, groupFile, coderFile, bossFile].every(f => fs.existsSync(f))) {
-        return null;
-    }
+    [longFile, shortFile, groupFile, coderFile, bossFile].forEach(f => {
+        if (!fs.existsSync(f)) fs.writeFileSync(f, '', 'utf-8');
+    });
     try {
         return {
             VerticesPersonaLong:  fs.readFileSync(longFile,  'utf-8'),
@@ -94,7 +94,6 @@ function logChat(phone, name, msg, reply, dir) {
     });
 
     try {
-        fs.mkdirSync(path.dirname(tmpFile), { recursive: true });
         fs.writeFileSync(tmpFile, JSON.stringify(history, null, 2));
         fs.renameSync(tmpFile, file);
     } catch (err) {
