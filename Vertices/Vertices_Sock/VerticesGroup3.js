@@ -94,7 +94,6 @@ async function handleGroupMessage(options) {
         chat,
         groupName,
         botName,
-        botNumber,
         client,
         CHAT_HISTORY_DIR,
         personaLong,

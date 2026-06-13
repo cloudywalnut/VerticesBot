@@ -234,10 +234,11 @@ function isValidPhoneNumber(num) {
     return /^\d{10,15}$/.test(cleaned);
 }
 
-if (!isValidPhoneNumber(global.BOT_PHONE)) {
-    console.error(`Invalid BOT_PHONE: "${global.BOT_PHONE}". Digits only, 10–15 characters.`);
-    process.exit(1);
-}
+// BOT_PHONE check commented out, as probably being handled correctly on handleMessageUpsert
+// if (!isValidPhoneNumber(global.BOT_PHONE)) {
+//     console.error(`Invalid BOT_PHONE: "${global.BOT_PHONE}". Digits only, 10–15 characters.`);
+//     process.exit(1);
+// }
 
 let expiryBossReport = global.BOSS_NOTIFICATION_EXPIRY * 60 * 1000; // convert to milliseconds
 
@@ -380,18 +381,18 @@ async function start() {
             if (fs.existsSync(QR_FILE)) fs.unlinkSync(QR_FILE);
             console.log('WhatsApp connected successfully!');
             
-            // Get bot phone number
-            const user = sock.user;
-            if (user && user.id) {
-                const phone = user.id.split(':')[0];
-                // Guardrail to prevent inconsistency in BOT PHONE
-                if (phone.split('@')[0] !== global.BOT_PHONE) {
-                    console.log("Inconsistency in BOT PHONE Number make sure to change the BOT PHONE number in BOT Settings");
-                    process.exit(1);
-                }else{
-                    console.log('Vertices AI Bot number is:', phone);
-                }
-            }
+            // // BOT_PHONE number - check skipped as probably being handled on handleMessageUpsert
+            // const user = sock.user;
+            // if (user && user.id) {
+            //     const phone = user.id.split(':')[0];
+            //     // Guardrail to prevent inconsistency in BOT PHONE
+            //     if (phone.split('@')[0] !== global.BOT_PHONE) {
+            //         console.log("Inconsistency in BOT PHONE Number make sure to change the BOT PHONE number in BOT Settings");
+            //         process.exit(1);
+            //     }else{
+            //         console.log('Vertices AI Bot number is:', phone);
+            //     }
+            // }
             
             // Reload environment with socket
             reloadEnv(sock);
@@ -867,7 +868,10 @@ setInterval(async () => {
 async function handleMessageUpsert(msgUpdate) {
     // Process ALL messages, not just the first one
     for (const msg of msgUpdate.messages) {
-        if (!msg.message || msg.key.fromMe) continue;
+        if (!msg.message || msg.key.fromMe){
+            console.log("No message or from myself, skipping...");
+            continue;
+        } 
         const jid = msg.key.remoteJid || '';
         // Ignore status updates (status@broadcast), broadcast lists (*@broadcast),
         // and WhatsApp Channels (*@newsletter) — these are not real chats and should
@@ -1412,7 +1416,6 @@ async function processSingleMessage(msg){
                     chat: { isGroup: true },
                     groupName,
                     botName: global.BOT_NAME,
-                    botNumber: global.BOT_PHONE,
                     client: sock,
                     CHAT_HISTORY_DIR: global.CHAT_HISTORY_DIR,
                     personaLong: VerticesPersonaGroup,

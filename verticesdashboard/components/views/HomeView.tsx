@@ -136,11 +136,11 @@ export function HomeView({ addToast, isMobile }: { addToast: AddToast; isMobile:
               <button className="btn-primary" onClick={startBot} disabled={running || busy} style={{ flex: 1, justifyContent: 'center' }}>
                 <PlayIcon style={{ width: 15, height: 15 }} /> Start
               </button>
-              <button className="btn-secondary" onClick={restartBot} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
-                <ArrowPathIcon style={{ width: 15, height: 15 }} /> Restart
-              </button>
               <button className="btn-danger" onClick={stopBot} disabled={!running || busy} style={{ flex: 1, justifyContent: 'center' }}>
                 <StopIcon style={{ width: 15, height: 15 }} /> Stop
+              </button>
+              <button className="btn-secondary" onClick={restartBot} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
+                <ArrowPathIcon style={{ width: 15, height: 15 }} /> Restart
               </button>
             </div>
           </div>

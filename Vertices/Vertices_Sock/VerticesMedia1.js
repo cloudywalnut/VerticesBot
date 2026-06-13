@@ -67,6 +67,14 @@ async function downloadBaileysMedia(msg) {
     }
 }
 
+// === TIMEOUT HELPER ===
+function withTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms))
+    ]);
+}
+
 // === FORWARD HELPER ===
 async function forwardMediaToBoss(sock, media, mediaType, userName) {
     const buf = Buffer.from(media.data, 'base64');
@@ -113,9 +121,8 @@ async function handleIncomingMedia(msg, sock, chatHistoryShort, userName) {
     if (hasText || mediaType === "Image") {
         const forwardMsg = prepareBossForwardMessage(userName, cleanPhone, chatHistoryShort, mediaType, userMessage || "(no caption)");
         try {
-            await sock.sendMessage(global.BOSS_PHONE, { text: forwardMsg });
-            await forwardMediaToBoss(sock, media, mediaType, userName);
-            await new Promise(resolve => setTimeout(resolve, 1200));
+            await withTimeout(sock.sendMessage(global.BOSS_PHONE, { text: forwardMsg }), 20000);
+            await withTimeout(forwardMediaToBoss(sock, media, mediaType, userName), 20000);
             console.log(`[${MODULE}] Forwarded ${mediaType} from ${userName} to Boss.`);
             runHelperCommand("logChat", global.BOSS_PHONE.split('@')[0], bossName, "", forwardMsg, CHAT_HISTORY_DIR);
         } catch (err) {
@@ -157,8 +164,8 @@ async function handleReplyForPendingMedia(msg, sock, chatHistoryShort) {
     const forwardMsg = prepareBossForwardMessage(userName, cleanPhone, chatHistoryShort, mediaType, userMessage);
 
     try {
-        await sock.sendMessage(global.BOSS_PHONE, { text: forwardMsg });
-        await forwardMediaToBoss(sock, media, mediaType, userName);
+        await withTimeout(sock.sendMessage(global.BOSS_PHONE, { text: forwardMsg }), 20000);
+        await withTimeout(forwardMediaToBoss(sock, media, mediaType, userName), 20000);
         console.log(`[${MODULE}] Forwarded cached ${mediaType} + reply from ${userName} to Boss.`);
     } catch (err) {
         console.warn(`[${MODULE}] Failed to forward cached media from ${userName}:`, err.message);

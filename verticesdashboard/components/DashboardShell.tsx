@@ -29,7 +29,7 @@ function applyAccent(hex: string) {
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark]                       = useState(false);
+  const [isDark, setIsDark]                       = useState(true);
   const [accentColor, setAccentColor]             = useState('#F13223');
   const [waState, setWaState]                     = useState<WaState>(null);
   const [toasts, setToasts]                       = useState<Toast[]>([]);
@@ -40,8 +40,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('vertices-theme');
-    if (stored === 'dark') {
-      setIsDark(true);
+    if (stored === 'light') {
+      setIsDark(false);
+    } else {
       document.documentElement.classList.add('dark');
     }
 
